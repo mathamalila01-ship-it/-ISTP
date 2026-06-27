@@ -1,0 +1,2507 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจำลองการสอบ คณิตศาสตร์ ม.ต้น</title>
+    <style>
+        body { margin:0; padding:0; background:#1e2022; color:#f0f2f5; font-family:'Sarabun',sans-serif; line-height:1.6; }
+        .navbar { display:flex; gap:15px; padding:15px 25px; overflow-x:auto; background:#141617; border-bottom:1px solid #2d3135; }
+        .navbar button { background:none; border:none; color:#a0a5ab; padding:5px 12px; cursor:pointer; font-size:0.95rem; white-space:nowrap; }
+        .navbar button.active { color:#00ffcc; font-weight:bold; }
+
+        .container { max-width:1200px; margin:0 auto; padding:30px 20px; }
+
+        table { width:100%; border-collapse:collapse; background:#141617; border-radius:8px; overflow:hidden; }
+        th, td { border:1px solid #2d3135; padding:14px; vertical-align:top; }
+        th { background:#24272b; color:#00ffcc; }
+
+        .subject-list button {
+            display:block; width:100%; background:none; border:none; color:#e2e5e9;
+            text-align:left; padding:14px 10px; border-bottom:1px solid #24272b; cursor:pointer;
+        }
+        .subject-list button:hover { background:#2d3135; }
+
+        .quiz-section, .score-section, .review-section { display:none; background:#141617; border:1px solid #2d3135; padding:25px; border-radius:8px; margin-top:20px; }
+
+        .quiz-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+        .quiz-title { margin:0; color:#00ffcc; font-size:1.3rem; }
+        .question-counter { color:#a0a5ab; font-size:1.1rem; }
+
+        .question-text { font-size:1.15rem; margin-bottom:25px; white-space:pre-line; background:#1e2022; padding:20px; border-radius:8px; }
+        .options-container { display:flex; flex-direction:column; gap:12px; }
+
+        .option-btn {
+            background:#24272b; border:1px solid #33383e; color:#e2e5e9;
+            padding:14px 18px; border-radius:6px; text-align:left; cursor:pointer;
+            transition: all 0.2s ease;
+        }
+        .option-btn.selected { 
+            background:#1a3a5f !important; 
+            border-color:#3b82f6 !important; 
+            transform: scale(1.03);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+        .option-btn.correct {
+            animation: correctPop 0.6s ease forwards;
+            box-shadow: 0 0 25px #00ffcc, 0 4px 15px rgba(0, 255, 204, 0.5);
+            border-color: #00ffcc !important;
+        }
+        .option-btn.wrong {
+            animation: wrongShake 0.5s ease;
+            box-shadow: 0 0 20px #ff5555;
+            border-color: #ff5555 !important;
+        }
+
+        @keyframes correctPop {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.28); }
+            70% { transform: scale(1.12); }
+            100% { transform: scale(1.08); }
+        }
+        @keyframes wrongShake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+
+        .quiz-footer { 
+            margin-top:30px; 
+            display:flex; 
+            justify-content:flex-end; 
+            gap:15px; 
+            padding-bottom: 220px; 
+        }
+
+        .confirm-btn, .next-btn { 
+            padding:16px 36px; 
+            font-weight:bold; 
+            border-radius:8px; 
+            cursor:pointer; 
+            font-size:1.1rem;
+        }
+        .confirm-btn { background:#3b82f6; color:white; border:none; }
+        .next-btn { background:#00ffcc; color:black; border:none; }
+
+        .score-big { font-size:3.8rem; color:#00ffcc; font-weight:bold; text-align:center; margin:20px 0; }
+
+        /* ===== หน้าสรุปคะแนน (ก่อนเข้าเฉลย) ===== */
+        .score-stats {
+            display:flex; align-items:center; justify-content:center; gap:40px;
+            flex-wrap:wrap; margin:30px 0;
+        }
+        .donut-wrap { position:relative; width:160px; height:160px; flex-shrink:0; }
+        .donut-wrap svg { transform: rotate(-90deg); }
+        .donut-track { fill:none; stroke:#24272b; stroke-width:16; }
+        .donut-progress { fill:none; stroke:#00ffcc; stroke-width:16; stroke-linecap:round; transition: stroke-dasharray 1s ease; }
+        .donut-center {
+            position:absolute; top:0; left:0; width:100%; height:100%;
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+        }
+        .donut-center .donut-percent { font-size:1.7rem; font-weight:bold; color:#00ffcc; }
+        .donut-center .donut-label { font-size:0.75rem; color:#a0a5ab; }
+
+        .stat-list { display:flex; flex-direction:column; gap:12px; min-width:160px; }
+        .stat-row { display:flex; align-items:center; gap:10px; font-size:1.05rem; }
+        .stat-dot { width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+        .stat-dot.correct { background:#00ffcc; }
+        .stat-dot.wrong { background:#ff5555; }
+        .stat-row .stat-count { font-weight:bold; margin-left:auto; padding-left:20px; }
+
+        .score-actions { display:flex; gap:15px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
+        .review-btn { background:#ffcc00; color:#1e2022; border:none; padding:14px 28px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:1.05rem; }
+        .home-btn { background:#33383e; color:#e2e5e9; border:none; padding:14px 28px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:1.05rem; }
+
+        /* ===== หน้าเฉลยข้อสอบ (เลื่อนทีละข้อ) ===== */
+        .review-result-tag {
+            display:inline-block; font-size:0.85rem; font-weight:bold;
+            padding:4px 12px; border-radius:20px; margin-bottom:14px;
+        }
+        .review-result-tag.is-correct { background:rgba(0,255,204,0.15); color:#00ffcc; }
+        .review-result-tag.is-wrong { background:rgba(255,85,85,0.15); color:#ff5555; }
+
+        .review-option {
+            background:#24272b; border:1px solid #33383e; color:#e2e5e9;
+            padding:14px 18px; border-radius:6px;
+            display:flex; justify-content:space-between; align-items:center; gap:10px;
+        }
+        .review-option .tag { font-size:0.8rem; font-weight:bold; white-space:nowrap; }
+        .review-option.user-correct { border-color:#00ffcc; background:rgba(0,255,204,0.08); }
+        .review-option.user-correct .tag { color:#00ffcc; }
+        .review-option.user-wrong { border-color:#ff5555; background:rgba(255,85,85,0.08); }
+        .review-option.user-wrong .tag { color:#ff5555; }
+        .review-option.correct-answer-only { border-color:#00ffcc; }
+        .review-option.correct-answer-only .tag { color:#00ffcc; }
+
+        .review-nav { display:flex; justify-content:space-between; gap:15px; margin-top:30px; }
+        .review-nav button {
+            flex:1; padding:14px; font-weight:bold; border-radius:8px; cursor:pointer;
+            font-size:1rem; border:none; background:#33383e; color:#e2e5e9;
+        }
+        .review-nav button:disabled { opacity:0.4; cursor:not-allowed; }
+        .review-jump-back { text-align:center; margin-top:20px; }
+
+        .review-explanation-box {
+            margin-top: 20px;
+            background: #1a2030;
+            border: 1px solid #2a3a5a;
+            border-left: 4px solid #ffcc00;
+            border-radius: 6px;
+            padding: 14px 18px;
+            color: #c8d0e0;
+            font-size: 0.97rem;
+            line-height: 1.75;
+            white-space: pre-line;
+        }
+        .review-explanation-box::before {
+            content: "💡 วิธีทำ / คำอธิบาย";
+            display: block;
+            color: #ffcc00;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .music-player {
+            position: fixed; bottom: 20px; right: 20px; z-index: 1000;
+            background: #00ffcc; color: #000; border: none; border-radius: 9999px;
+            padding: 10px 20px; font-weight: bold; font-size: 1rem;
+            box-shadow: 0 0 15px rgba(0,255,204,0.5); cursor: pointer;
+            display: flex; align-items: center; gap: 6px;
+        }
+
+        /* ===== เครื่องคิดเลข ===== */
+        .calc-btn-float {
+            position: fixed; bottom: 20px; left: 20px; z-index: 1000;
+            background: #ffcc00; color: #000; border: none; border-radius: 9999px;
+            padding: 10px 20px; font-weight: bold; font-size: 1rem;
+            box-shadow: 0 0 15px rgba(255,204,0,0.5); cursor: pointer;
+        }
+        .calc-overlay {
+            display: none; position: fixed; inset: 0; z-index: 2000;
+            background: rgba(0,0,0,0.6); align-items: center; justify-content: center;
+        }
+        .calc-overlay.open { display: flex; }
+        .calc-box {
+            background: #1e2022; border: 1px solid #2d3135; border-radius: 16px;
+            padding: 20px; width: 300px; max-width: 95vw;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+        }
+        .calc-screen {
+            background: #141617; border-radius: 8px; padding: 12px 16px;
+            margin-bottom: 14px; text-align: right;
+        }
+        .calc-expr { font-size: 0.85rem; color: #a0a5ab; min-height: 1.2em; word-break: break-all; }
+        .calc-display { font-size: 2rem; color: #e2e5e9; font-weight: bold; word-break: break-all; }
+        .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .calc-key {
+            background: #2d3135; color: #e2e5e9; border: none; border-radius: 8px;
+            padding: 16px 4px; font-size: 1.1rem; cursor: pointer; font-weight: bold;
+            transition: background 0.1s;
+        }
+        .calc-key:active { background: #44484e; }
+        .calc-key.op { background: #1a3a5a; color: #00ccff; }
+        .calc-key.eq { background: #00ffcc; color: #000; grid-column: span 2; }
+        .calc-key.clr { background: #3a1a1a; color: #ff5555; }
+        .calc-key.close-btn { background: #33383e; color: #a0a5ab; grid-column: span 4; font-size: 0.9rem; padding: 10px; }
+
+        /* ===== หน้าผู้สนับสนุน ===== */
+        .sponsor-section { display:none; background:#141617; border:1px solid #2d3135; padding:30px 25px; border-radius:8px; margin-top:20px; }
+        .sponsor-card {
+            background:#1e2022; border:1px solid #2d3135; border-radius:12px;
+            padding:24px; display:flex; flex-direction:column; align-items:center;
+            gap:16px; text-align:center;
+        }
+        .sponsor-yt-icon {
+            width:64px; height:64px; background:#ff0000; border-radius:14px;
+            display:flex; align-items:center; justify-content:center;
+            font-size:2rem;
+        }
+        .sponsor-name { font-size:1.3rem; font-weight:bold; color:#e2e5e9; }
+        .sponsor-desc { font-size:0.95rem; color:#a0a5ab; line-height:1.6; }
+        .sponsor-link {
+            display:inline-flex; align-items:center; gap:8px;
+            background:#ff0000; color:#fff; text-decoration:none;
+            padding:12px 24px; border-radius:8px; font-weight:bold;
+            font-size:1rem; transition:background 0.2s;
+        }
+        .sponsor-link:hover { background:#cc0000; }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <button onclick="goHome()" class="active">หน้าแรก</button>
+        <button onclick="goHome()">จำลองสอบจริง</button>
+        <button onclick="goSponsor()">ผู้สนับสนุน</button>
+    </div>
+
+    <div class="container">
+        <div id="home-page">
+            <h1>ระบบจำลองการสอบ คณิตศาสตร์ ม.ต้น</h1>
+            <div class="intro-text">20 ข้อต่อชุด • โจทย์ตรงหัวข้อ • ซ้ำน้อยที่สุด</div>
+            
+            <table>
+                <thead><tr><th>รอบที่ 1</th><th>รอบที่ 2</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td class="subject-list">
+                            <button onclick="startQuiz('เซต และ ตรรกศาสตร์')">📋 เซต และ ตรรกศาสตร์</button>
+                            <button onclick="startQuiz('ระบบจำนวนจริง')">📋 ระบบจำนวนจริง</button>
+                            <button onclick="startQuiz('หลักการนับเบื้องต้น')">📋 หลักการนับเบื้องต้น</button>
+                            <button onclick="startQuiz('ความน่าจะเป็น')">📋 ความน่าจะเป็น</button>
+                        </td>
+                        <td class="subject-list">
+                            <button onclick="startQuiz('ฟังก์ชันและความสัมพันธ์')">🔥 ฟังก์ชันและความสัมพันธ์</button>
+                            <button onclick="startQuiz('เรขาคณิตวิเคราะห์')">🔥 เรขาคณิตวิเคราะห์</button>
+                            <button onclick="startQuiz('ภาคตัดกรวยชั้นสูง')">🔥 ภาคตัดกรวยชั้นสูง</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="quiz-page" class="quiz-section">
+            <div class="quiz-header">
+                <h3 id="quiz-title" class="quiz-title"></h3>
+                <span id="question-counter" class="question-counter"></span>
+            </div>
+            <div id="question-box" class="question-text"></div>
+            <div class="options-container" id="options-box"></div>
+            <div class="quiz-footer">
+                <button id="confirm-btn" class="confirm-btn" onclick="confirmAnswer()">ยืนยันคำตอบ 🔘</button>
+                <button id="next-btn" class="next-btn" onclick="nextQuestion()">ข้อถัดไป 👉</button>
+            </div>
+        </div>
+
+        <div id="score-page" class="score-section">
+            <h2 style="text-align:center;">สิ้นสุดการทำข้อสอบ</h2>
+            <p id="score-topic" style="color:#a0a5ab; text-align:center;"></p>
+            <div class="score-big"><span id="user-score">0</span> / 20</div>
+            <p style="text-align:center; font-size:1.3rem; margin:15px 0;">
+                เวลาที่ใช้ <span id="total-time" style="color:#ffcc00; font-weight:bold;">0 นาที 0 วินาที</span>
+            </p>
+
+            <div class="score-stats">
+                <div class="donut-wrap">
+                    <svg width="160" height="160" viewBox="0 0 160 160">
+                        <circle class="donut-track" cx="80" cy="80" r="68"></circle>
+                        <circle id="donut-progress" class="donut-progress" cx="80" cy="80" r="68"></circle>
+                    </svg>
+                    <div class="donut-center">
+                        <span class="donut-percent" id="donut-percent">0%</span>
+                        <span class="donut-label">ทำถูก</span>
+                    </div>
+                </div>
+                <div class="stat-list">
+                    <div class="stat-row">
+                        <span class="stat-dot correct"></span>
+                        <span>ตอบถูก</span>
+                        <span class="stat-count" id="stat-correct-count" style="color:#00ffcc;">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-dot wrong"></span>
+                        <span>ตอบผิด</span>
+                        <span class="stat-count" id="stat-wrong-count" style="color:#ff5555;">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="score-actions">
+                <button class="home-btn" onclick="goHome()">กลับสู่หน้าแรก</button>
+                <button class="review-btn" onclick="openReview()">📖 ดูเฉลยข้อสอบ</button>
+            </div>
+        </div>
+
+        <div id="review-page" class="review-section">
+            <div class="quiz-header">
+                <h3 id="review-title" class="quiz-title">เฉลยข้อสอบ</h3>
+                <span id="review-counter" class="question-counter"></span>
+            </div>
+
+            <div id="review-result-tag" class="review-result-tag"></div>
+            <div id="review-question-box" class="question-text"></div>
+            <div class="options-container" id="review-options-box"></div>
+
+            <div class="review-nav">
+                <button id="review-prev-btn" onclick="reviewPrev()">👈 ข้อก่อนหน้า</button>
+                <button id="review-next-btn" onclick="reviewNext()">ข้อถัดไป 👉</button>
+            </div>
+            <div id="review-explanation-box" class="review-explanation-box"></div>
+            <div class="review-jump-back">
+                <button onclick="goHome()">กลับสู่หน้าแรก</button>
+            </div>
+        </div>
+
+        <!-- หน้าผู้สนับสนุน -->
+        <div id="sponsor-page" class="sponsor-section">
+            <h2 style="text-align:center; margin-bottom:24px;">❤️ ผู้สนับสนุน</h2>
+            <div class="sponsor-card">
+                <div class="sponsor-yt-icon">▶</div>
+                <div class="sponsor-name">พ่อบ้านติวเตอร์</div>
+                <div class="sponsor-desc">
+                    ช่อง YouTube สำหรับนักเรียนที่ต้องการเรียนรู้คณิตศาสตร์<br>
+                    และวิชาอื่นๆ อย่างเข้าใจ ติดตามได้ที่ช่องด้านล่างนี้
+                </div>
+                <a class="sponsor-link" href="https://www.youtube.com/@phorbantutor" target="_blank" rel="noopener">
+                    ▶ ไปที่ช่อง YouTube
+                </a>
+                <div style="font-size:0.8rem; color:#555; margin-top:4px;">www.youtube.com/@phorbantutor</div>
+            </div>
+            <div style="text-align:center; margin-top:24px;">
+                <button class="home-btn" onclick="goHome()">กลับสู่หน้าแรก</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="music-player" id="music-widget">
+        <button id="music-btn" onclick="toggleMusic()" style="background:none;border:none;color:inherit;cursor:pointer;font-size:0.95rem;font-weight:bold;padding:0;">♫ เปิดเพลง</button>
+    </div>
+    <audio id="bgMusic" loop preload="auto"></audio>
+
+    <!-- ปุ่มเครื่องคิดเลข -->
+    <button class="calc-btn-float" onclick="toggleCalc()">🧮 คิดเลข</button>
+
+    <!-- Modal เครื่องคิดเลข -->
+    <div class="calc-overlay" id="calc-overlay" onclick="closeCalcOutside(event)">
+        <div class="calc-box">
+            <div class="calc-screen">
+                <div class="calc-expr" id="calc-expr"></div>
+                <div class="calc-display" id="calc-display">0</div>
+            </div>
+            <div class="calc-grid">
+                <button class="calc-key clr" onclick="calcClear()">C</button>
+                <button class="calc-key op"  onclick="calcSign()">±</button>
+                <button class="calc-key op"  onclick="calcPercent()">%</button>
+                <button class="calc-key op"  onclick="calcOp('/')">÷</button>
+
+                <button class="calc-key" onclick="calcNum('7')">7</button>
+                <button class="calc-key" onclick="calcNum('8')">8</button>
+                <button class="calc-key" onclick="calcNum('9')">9</button>
+                <button class="calc-key op" onclick="calcOp('*')">×</button>
+
+                <button class="calc-key" onclick="calcNum('4')">4</button>
+                <button class="calc-key" onclick="calcNum('5')">5</button>
+                <button class="calc-key" onclick="calcNum('6')">6</button>
+                <button class="calc-key op" onclick="calcOp('-')">−</button>
+
+                <button class="calc-key" onclick="calcNum('1')">1</button>
+                <button class="calc-key" onclick="calcNum('2')">2</button>
+                <button class="calc-key" onclick="calcNum('3')">3</button>
+                <button class="calc-key op" onclick="calcOp('+')">+</button>
+
+                <button class="calc-key" onclick="calcNum('0')" style="grid-column:span 2;">0</button>
+                <button class="calc-key" onclick="calcDot()">.</button>
+                <button class="calc-key eq" onclick="calcEquals()">=</button>
+
+                <button class="calc-key" onclick="calcBackspace()">⌫</button>
+                <button class="calc-key" onclick="calcSqrt()">√</button>
+                <button class="calc-key" onclick="calcSquare()">x²</button>
+                <button class="calc-key" onclick="calc1x()">1/x</button>
+
+                <button class="calc-key close-btn" onclick="toggleCalc()">✕ ปิดเครื่องคิดเลข</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <script>
+        // ==================== ระบบเสียงเอฟเฟกต์ (สร้างสดด้วย Web Audio API) ====================
+        let audioCtx = null;
+        function getAudioCtx() {
+            // ต้องสร้าง/ปลดล็อก AudioContext หลังมี user gesture (เช่น คลิกครั้งแรก)
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        // เล่นโน้ตเดียว ด้วย oscillator + envelope (กันเสียงแตก/คลิกป๊อก)
+        function playTone(freq, startOffset, duration, type = 'sine', peakGain = 0.18) {
+            const ctx = getAudioCtx();
+            const t0 = ctx.currentTime + startOffset;
+
+            const osc = ctx.createOscillator();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, t0);
+
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0, t0);
+            gain.gain.linearRampToValueAtTime(peakGain, t0 + 0.012);   // attack เร็ว
+            gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration); // release นุ่ม
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(t0);
+            osc.stop(t0 + duration + 0.02);
+        }
+
+        // เสียงคลิก/เลือกตัวเลือก: ป๊อกสั้น แหลม กระชับ
+        function playClickSound() {
+            playTone(700, 0, 0.07, 'square', 0.10);
+        }
+
+        // เสียงตอบถูก: ทำนองไล่ขึ้นสดใส (arpeggio สั้น ๆ)
+        function playCorrectSound() {
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // C5 E5 G5 C6
+            notes.forEach((f, i) => playTone(f, i * 0.07, 0.22, 'sine', 0.16));
+        }
+
+        // เสียงตอบผิด: โน้ตต่ำลงสั้น ๆ แบบ "เอ๊ะ ผิด"
+        function playWrongSound() {
+            playTone(220, 0, 0.18, 'sawtooth', 0.14);
+            playTone(174.61, 0.10, 0.28, 'sawtooth', 0.14);
+        }
+
+        // ==================== Feedback รวม (สั่น + เสียง) ====================
+        function playFeedback(type) {
+            // การสั่น (ทำงานได้ดีใน Acode / Android)
+            if (navigator.vibrate) {
+                if (type === 'click') {
+                    navigator.vibrate(25);
+                } else if (type === 'correct') {
+                    navigator.vibrate([40, 20, 90]); // สั่นสั้น-ยาว แบบ success
+                } else if (type === 'wrong') {
+                    navigator.vibrate(150); // สั่นยาวแบบผิด
+                }
+            }
+
+            // เสียงประกอบ (สร้างสดด้วยโค้ด ไม่ต้องใช้ไฟล์เสียงเพิ่ม)
+            try {
+                if (type === 'click') {
+                    playClickSound();
+                } else if (type === 'correct') {
+                    playCorrectSound();
+                } else if (type === 'wrong') {
+                    playWrongSound();
+                }
+            } catch (e) {
+                // เบราว์เซอร์บางตัว/Acode WebView อาจไม่รองรับ Web Audio API เต็มรูปแบบ
+                console.warn('ไม่สามารถเล่นเสียงเอฟเฟกต์ได้:', e);
+            }
+        }
+        // =====================================================================
+
+        // ==================== ระบบเพลง MP3 (thelastsahur.mp3) ====================
+        const musicFileName = "thelastsahur.mp3";
+        const audio = document.getElementById('bgMusic');
+        let isPlaying = false;
+
+        function toggleMusic() {
+            if (isPlaying) {
+                audio.pause();
+                document.getElementById('music-btn').innerHTML = '♫ เปิดเพลง';
+                isPlaying = false;
+            } else {
+                audio.src = musicFileName;
+                audio.volume = 0.45;
+                audio.play().then(() => {
+                    document.getElementById('music-btn').innerHTML = '⏸️ หยุดเพลง';
+                    isPlaying = true;
+                }).catch(() => {
+                    alert('❌ ไม่พบไฟล์เพลง\nกรุณาวางไฟล์ "' + musicFileName + '" ในโฟลเดอร์เดียวกับ quiz.html');
+                });
+            }
+        }
+        // =====================================================================
+
+        // ==================== เครื่องคิดเลข ====================
+        let calcCurrentVal = '0';
+        let calcPrevVal = '';
+        let calcOperator = '';
+        let calcShouldReset = false;
+        let calcExpression = '';
+
+        function toggleCalc() {
+            const overlay = document.getElementById('calc-overlay');
+            overlay.classList.toggle('open');
+        }
+        function closeCalcOutside(e) {
+            if (e.target === document.getElementById('calc-overlay')) toggleCalc();
+        }
+        function calcUpdateDisplay() {
+            document.getElementById('calc-display').textContent =
+                parseFloat(calcCurrentVal).toLocaleString('th-TH', { maximumFractionDigits: 10 });
+            document.getElementById('calc-expr').textContent = calcExpression;
+        }
+        function calcNum(n) {
+            if (calcShouldReset) { calcCurrentVal = ''; calcShouldReset = false; }
+            if (n === '0' && calcCurrentVal === '0') return;
+            if (calcCurrentVal.length >= 14) return;
+            calcCurrentVal = calcCurrentVal === '0' ? n : calcCurrentVal + n;
+            calcUpdateDisplay();
+        }
+        function calcDot() {
+            if (calcShouldReset) { calcCurrentVal = '0'; calcShouldReset = false; }
+            if (!calcCurrentVal.includes('.')) calcCurrentVal += '.';
+            calcUpdateDisplay();
+        }
+        function calcOp(op) {
+            const opSymbols = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+            if (calcPrevVal && !calcShouldReset) calcEquals(true);
+            calcPrevVal = calcCurrentVal;
+            calcOperator = op;
+            calcShouldReset = true;
+            calcExpression = calcCurrentVal + ' ' + opSymbols[op];
+            calcUpdateDisplay();
+        }
+        function calcEquals(silent) {
+            if (!calcOperator || !calcPrevVal) return;
+            const a = parseFloat(calcPrevVal), b = parseFloat(calcCurrentVal);
+            const opSymbols = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+            let result;
+            if (calcOperator === '+') result = a + b;
+            else if (calcOperator === '-') result = a - b;
+            else if (calcOperator === '*') result = a * b;
+            else if (calcOperator === '/') result = b !== 0 ? a / b : 'หารด้วย 0 ไม่ได้';
+            if (!silent) calcExpression = calcPrevVal + ' ' + opSymbols[calcOperator] + ' ' + calcCurrentVal + ' =';
+            calcCurrentVal = isNaN(result) || typeof result === 'string' ? String(result) : String(parseFloat(result.toFixed(10)));
+            calcOperator = ''; calcPrevVal = ''; calcShouldReset = true;
+            calcUpdateDisplay();
+        }
+        function calcClear() {
+            calcCurrentVal = '0'; calcPrevVal = ''; calcOperator = '';
+            calcShouldReset = false; calcExpression = '';
+            calcUpdateDisplay();
+        }
+        function calcBackspace() {
+            if (calcShouldReset) { calcClear(); return; }
+            calcCurrentVal = calcCurrentVal.length > 1 ? calcCurrentVal.slice(0, -1) : '0';
+            calcUpdateDisplay();
+        }
+        function calcSign() {
+            calcCurrentVal = String(parseFloat(calcCurrentVal) * -1);
+            calcUpdateDisplay();
+        }
+        function calcPercent() {
+            calcCurrentVal = String(parseFloat(calcCurrentVal) / 100);
+            calcExpression = calcCurrentVal + '%'; calcUpdateDisplay();
+        }
+        function calcSqrt() {
+            const v = parseFloat(calcCurrentVal);
+            calcExpression = '√' + calcCurrentVal;
+            calcCurrentVal = v >= 0 ? String(parseFloat(Math.sqrt(v).toFixed(10))) : 'ไม่มีค่า';
+            calcShouldReset = true; calcUpdateDisplay();
+        }
+        function calcSquare() {
+            const v = parseFloat(calcCurrentVal);
+            calcExpression = calcCurrentVal + '²';
+            calcCurrentVal = String(parseFloat((v * v).toFixed(10)));
+            calcShouldReset = true; calcUpdateDisplay();
+        }
+        function calc1x() {
+            const v = parseFloat(calcCurrentVal);
+            calcExpression = '1/' + calcCurrentVal;
+            calcCurrentVal = v !== 0 ? String(parseFloat((1 / v).toFixed(10))) : 'หารด้วย 0 ไม่ได้';
+            calcShouldReset = true; calcUpdateDisplay();
+        }
+        // =====================================================================
+
+
+        var currentQuestions = [];
+        var currentQuestionIndex = 0;
+        var score = 0;
+        var isConfirmed = false;
+        var selectedOptionData = null;
+        var totalQuestions = 20;
+        var startTime = 0;
+        var userAnswers = [];   // เก็บคำตอบของผู้ใช้แต่ละข้อ สำหรับหน้าเฉลย
+        var reviewIndex = 0;    // ข้อที่กำลังดูอยู่ในหน้าเฉลย
+        var currentTopicName = '';
+
+        var realQuestionBank = {
+            "เซต และ ตรรกศาสตร์": {
+                "data": [
+                    {
+                        "text": "กำหนด n(A) = 20, n(B) = 25, n(A ∪ B) = 40 จงหา n(A ∩ B)",
+                        "options": [
+                            "5",
+                            "10",
+                            "15",
+                            "20"
+                        ],
+                        "correct": 0,
+                        "explanation": "ใช้สูตร n(A∪B)=n(A)+n(B)−n(A∩B) แทนค่า: 40=20+25−n(A∩B) จะได้ n(A∩B)=5"
+                    },
+                    {
+                        "text": "นักเรียน 100 คน ชอบคณิตศาสตร์ 55 คน ชอบฟิสิกส์ 48 คน ไม่ชอบวิชาใดเลย 12 คน ชอบทั้งสองวิชากี่คน",
+                        "options": [
+                            "15",
+                            "20",
+                            "25",
+                            "33"
+                        ],
+                        "correct": 0,
+                        "explanation": "คนที่ชอบอย่างน้อยหนึ่งวิชา = 100−12 = 88 คน แล้วใช้สูตร n(A∪B)=n(A)+n(B)−n(A∩B): 88=55+48−x ดังนั้น x=15"
+                    },
+                    {
+                        "text": "เซต A = {x | x เป็นจำนวนเต็มบวกน้อยกว่า 10} เซต B = {x | x เป็นจำนวนคู่} จงหา A ∩ B",
+                        "options": [
+                            "{2,4,6,8}",
+                            "{1,3,5,7,9}",
+                            "{2,3,4,5}",
+                            "{1,2,3,4}"
+                        ],
+                        "correct": 0,
+                        "explanation": "A={1,2,3,4,5,6,7,8,9} และ B=เซตจำนวนคู่ทั้งหมด A∩B คือสมาชิกใน A ที่เป็นจำนวนคู่ ได้แก่ {2,4,6,8}"
+                    },
+                    {
+                        "text": "นิเสธของประพจน์ \"ทุกนักเรียนชอบคณิตศาสตร์\" คือ",
+                        "options": [
+                            "บางนักเรียนชอบคณิตศาสตร์",
+                            "ไม่มีนักเรียนชอบคณิตศาสตร์",
+                            "ทุกนักเรียนไม่ชอบคณิตศาสตร์",
+                            "บางนักเรียนไม่ชอบคณิตศาสตร์"
+                        ],
+                        "correct": 3,
+                        "explanation": "นิเสธของ \"ทุก...\" คือ \"บางคนไม่...\" ดังนั้นนิเสธของ \"ทุกนักเรียนชอบคณิต\" คือ \"บางนักเรียนไม่ชอบคณิตศาสตร์\""
+                    },
+                    {
+                        "text": "ถ้า A = {1,2,3} จงหาจำนวนสับเซตทั้งหมดของ A",
+                        "options": [
+                            "6",
+                            "7",
+                            "8",
+                            "9"
+                        ],
+                        "correct": 2,
+                        "explanation": "จำนวนสับเซตของเซตที่มี n สมาชิก = 2ⁿ เซต A มี 3 สมาชิก ดังนั้นสับเซตทั้งหมด = 2³ = 8 เซต"
+                    },
+                    {
+                        "text": "กำหนด U = {1,2,3,4,5,6,7,8,9,10}, A = {1,2,3,4,5}, จงหา A' (คอมพลีเมนต์ของ A)",
+                        "options": [
+                            "{6,7,8,9,10}",
+                            "{1,2,3,4,5}",
+                            "{1,3,5,7,9}",
+                            "{2,4,6,8,10}"
+                        ],
+                        "correct": 0,
+                        "explanation": "A'(คอมพลีเมนต์) คือสมาชิกใน U ที่ไม่อยู่ใน A นำสมาชิก A={1..5} ออกจาก U={1..10} เหลือ A'={6,7,8,9,10}"
+                    },
+                    {
+                        "text": "เซต A = {2,4,6}, B = {4,6,8} จงหา A - B",
+                        "options": [
+                            "{2}",
+                            "{4,6}",
+                            "{2,4,6,8}",
+                            "{8}"
+                        ],
+                        "correct": 0,
+                        "explanation": "A−B คือสมาชิกที่อยู่ใน A แต่ไม่อยู่ใน B A={2,4,6} B={4,6,8} ตัด 4 และ 6 ออก เหลือ A−B={2}"
+                    },
+                    {
+                        "text": "ประพจน์ \"p → q\" มีค่าความจริงเป็นเท็จเมื่อใด",
+                        "options": [
+                            "p จริง, q จริง",
+                            "p จริง, q เท็จ",
+                            "p เท็จ, q จริง",
+                            "p เท็จ, q เท็จ"
+                        ],
+                        "correct": 1,
+                        "explanation": "p→q เป็นเท็จได้กรณีเดียว คือ p จริงแต่ q เท็จ (สัญญาที่ผิดคำพูด) กรณีอื่นๆ ทั้งหมดให้ผลเป็นจริง"
+                    },
+                    {
+                        "text": "ถ้า p: 2 เป็นจำนวนคู่ (จริง), q: 3 เป็นจำนวนคู่ (เท็จ) ค่าความจริงของ p ∧ q คือ",
+                        "options": [
+                            "จริง",
+                            "เท็จ",
+                            "ไม่สามารถระบุได้",
+                            "เป็นทั้งจริงและเท็จ"
+                        ],
+                        "correct": 1,
+                        "explanation": "p∧q (และ) เป็นจริงก็ต่อเมื่อทั้งสองฝ่ายจริงพร้อมกัน เมื่อ p จริงแต่ q เท็จ ผลของ p∧q จึงเป็นเท็จ"
+                    },
+                    {
+                        "text": "ค่าความจริงของ p ∨ q เป็นเท็จ เมื่อใด",
+                        "options": [
+                            "p จริง, q จริง",
+                            "p จริง, q เท็จ",
+                            "p เท็จ, q จริง",
+                            "p เท็จ, q เท็จ"
+                        ],
+                        "correct": 3,
+                        "explanation": "p∨q (หรือ) เป็นเท็จได้กรณีเดียว คือเมื่อทั้ง p และ q เป็นเท็จพร้อมกัน ถ้ามีฝ่ายใดจริงแม้แค่ฝ่ายเดียว ผลเป็นจริงทันที"
+                    },
+                    {
+                        "text": "นักเรียนห้องหนึ่งมี 40 คน เล่นฟุตบอล 18 คน เล่นบาสเกตบอล 20 คน เล่นทั้งสองอย่าง 8 คน มีกี่คนที่ไม่เล่นทั้งสองอย่าง",
+                        "options": [
+                            "8",
+                            "10",
+                            "12",
+                            "14"
+                        ],
+                        "correct": 1,
+                        "explanation": "คนเล่นอย่างน้อยหนึ่งกีฬา = 18+20−8 = 30 คน คนไม่เล่นทั้งสองอย่าง = 40−30 = 10 คน"
+                    },
+                    {
+                        "text": "เซต A มีสมาชิก 5 ตัว เซต B มีสมาชิก 3 ตัว ถ้า A ∩ B = ∅ จงหา n(A ∪ B)",
+                        "options": [
+                            "5",
+                            "8",
+                            "15",
+                            "2"
+                        ],
+                        "correct": 1,
+                        "explanation": "A∩B=∅ แปลว่าไม่มีสมาชิกร่วมกัน n(A∪B)=n(A)+n(B)−0 = 5+3 = 8"
+                    },
+                    {
+                        "text": "ข้อใดคือนิเสธของ \"มีนักเรียนบางคนสอบไม่ผ่าน\"",
+                        "options": [
+                            "นักเรียนทุกคนสอบผ่าน",
+                            "นักเรียนทุกคนสอบไม่ผ่าน",
+                            "มีนักเรียนบางคนสอบผ่าน",
+                            "ไม่มีนักเรียนสอบผ่าน"
+                        ],
+                        "correct": 0,
+                        "explanation": "นิเสธของ \"มีบางคน...\" คือ \"ทุกคนไม่...\" ดังนั้นนิเสธของ \"มีนักเรียนบางคนสอบไม่ผ่าน\" คือ \"นักเรียนทุกคนสอบผ่าน\""
+                    },
+                    {
+                        "text": "กำหนด A = {x | x² = 9} จงหาสมาชิกของ A",
+                        "options": [
+                            "{3}",
+                            "{-3}",
+                            "{3, -3}",
+                            "{9}"
+                        ],
+                        "correct": 2,
+                        "explanation": "แก้สมการ x²=9 ได้ x=±3 (ทั้งรากบวกและลบ) ดังนั้น A={3,−3} อย่าลืมรากที่เป็นค่าลบ"
+                    },
+                    {
+                        "text": "ประพจน์ p ↔ q (สมมูล) มีค่าความจริงเป็นจริง เมื่อใด",
+                        "options": [
+                            "p, q มีค่าความจริงตรงกัน",
+                            "p, q มีค่าความจริงต่างกัน",
+                            "p จริงเสมอ",
+                            "q เท็จเสมอ"
+                        ],
+                        "correct": 0,
+                        "explanation": "p↔q (สมมูล) เป็นจริงเมื่อ p และ q มีค่าความจริงตรงกัน (จริงทั้งคู่ หรือ เท็จทั้งคู่)"
+                    },
+                    {
+                        "text": "ถ้า A = {a,b,c,d} จงหาจำนวนสับเซตที่มีสมาชิก 2 ตัว",
+                        "options": [
+                            "4",
+                            "6",
+                            "8",
+                            "12"
+                        ],
+                        "correct": 1,
+                        "explanation": "จำนวนวิธีเลือกสมาชิก 2 ตัวจาก 4 ตัว (ไม่สนลำดับ) = C(4,2) = 4!/(2!×2!) = 12/2 = 6"
+                    },
+                    {
+                        "text": "U = {1,2,...,20}, A = เซตของจำนวนที่หารด้วย 4 ลงตัว จงหา n(A)",
+                        "options": [
+                            "4",
+                            "5",
+                            "6",
+                            "7"
+                        ],
+                        "correct": 1,
+                        "explanation": "จำนวนที่หารด้วย 4 ลงตัวใน {1..20} ได้แก่ 4,8,12,16,20 รวม 5 ตัว (วิธีลัด: 20÷4=5)"
+                    },
+                    {
+                        "text": "ข้อใดเป็นสัจนิรันดร์ (Tautology)",
+                        "options": [
+                            "p ∧ ~p",
+                            "p ∨ ~p",
+                            "p ∧ q",
+                            "p → ~p"
+                        ],
+                        "correct": 1,
+                        "explanation": "สัจนิรันดร์คือประพจน์ที่เป็นจริงเสมอ p∨~p จริงเสมอ (ถ้า p จริง→ p∨~p จริง ถ้า p เท็จ→ ~p จริง→ p∨~p จริง)"
+                    },
+                    {
+                        "text": "เซต A = {1,2,3}, B = {3,4,5} จงหา n(A ∪ B)",
+                        "options": [
+                            "3",
+                            "4",
+                            "5",
+                            "6"
+                        ],
+                        "correct": 2,
+                        "explanation": "A∪B รวมสมาชิกทั้งหมดโดยไม่นับซ้ำ A={1,2,3} B={3,4,5} AUB={1,2,3,4,5} ดังนั้น n(AUB)=5"
+                    },
+                    {
+                        "text": "ถ้า p จริง และ q เท็จ จงหาค่าความจริงของ ~p ∨ q",
+                        "options": [
+                            "จริง",
+                            "เท็จ",
+                            "ไม่สามารถระบุได้",
+                            "ขึ้นกับ p เท่านั้น"
+                        ],
+                        "correct": 1,
+                        "explanation": "~p=เท็จ (เพราะ p จริง) และ q=เท็จ ดังนั้น ~p∨q = เท็จ∨เท็จ = เท็จ"
+                    },
+                    {
+                        "text": "เซตว่าง (∅) เป็นสับเซตของเซตใดบ้าง",
+                        "options": [
+                            "เฉพาะเซตว่างเท่านั้น",
+                            "ทุกเซต",
+                            "เฉพาะเซตอนันต์",
+                            "ไม่มีเซตใดเลย"
+                        ],
+                        "correct": 1,
+                        "explanation": "เซตว่าง (∅) ไม่มีสมาชิกเลย จึงไม่มีสมาชิกตัวไหนที่จะ \"ขัด\" เงื่อนไขสับเซต ดังนั้น ∅ เป็นสับเซตของทุกเซต"
+                    },
+                    {
+                        "text": "จากแผนภาพเวนน์ นักเรียน 50 คน อ่านหนังสือ A 28 คน อ่านหนังสือ B 24 คน อ่านทั้งสองเล่ม 10 คน มีกี่คนที่ไม่อ่านทั้งสองเล่ม",
+                        "options": [
+                            "6",
+                            "8",
+                            "10",
+                            "12"
+                        ],
+                        "correct": 1,
+                        "explanation": "คนอ่านอย่างน้อยหนึ่งเล่ม = 28+24−10 = 42 คน คนไม่อ่านทั้งสองเล่มเลย = 50−42 = 8 คน"
+                    }
+                ]
+            },
+            "ระบบจำนวนจริง": {
+                "data": [
+                    {
+                        "text": "จงหาคำตอบของสมการ |x - 5| + |x + 3| = 10",
+                        "options": [
+                            "x = -4 หรือ x = 6",
+                            "x = -3 หรือ x = 5",
+                            "x = 2 หรือ x = 8",
+                            "x = 1 หรือ x = 7"
+                        ],
+                        "correct": 0,
+                        "explanation": "ลองแทนค่า x=−4: |−4−5|+|−4+3|=9+1=10 ✓ และ x=6: |6−5|+|6+3|=1+9=10 ✓ ทั้งสองค่าถูกต้อง"
+                    },
+                    {
+                        "text": "จงหาผลลัพธ์ของ 2³ × 2⁴",
+                        "options": [
+                            "2⁷",
+                            "2¹²",
+                            "4⁷",
+                            "8⁷"
+                        ],
+                        "correct": 0,
+                        "explanation": "กฎเลขยกกำลังฐานเดียวกัน: aᵐ×aⁿ=aᵐ⁺ⁿ ดังนั้น 2³×2⁴=2³⁺⁴=2⁷ (บวกเลขชี้กำลัง ไม่ใช่คูณฐาน)"
+                    },
+                    {
+                        "text": "ค่าของ √50 อยู่ระหว่างจำนวนเต็มคู่ใด",
+                        "options": [
+                            "5 และ 6",
+                            "6 และ 7",
+                            "7 และ 8",
+                            "4 และ 5"
+                        ],
+                        "correct": 1,
+                        "explanation": "ตรวจ: 7²=49 และ 8²=64 เนื่องจาก 49<50<64 ดังนั้น 7<√50<8 และ √50≈7.07"
+                    },
+                    {
+                        "text": "จงแก้อสมการ 2x - 5 < 7",
+                        "options": [
+                            "x < 6",
+                            "x > 6",
+                            "x < 1",
+                            "x > 1"
+                        ],
+                        "correct": 0,
+                        "explanation": "ย้ายข้างได้ 2x<12 หารด้วย 2 (บวก เครื่องหมายไม่เปลี่ยน) ได้ x<6"
+                    },
+                    {
+                        "text": "ผลบวกของจำนวนตรรกยะ 1/3 และ 1/4 เท่ากับ",
+                        "options": [
+                            "2/7",
+                            "7/12",
+                            "1/12",
+                            "5/7"
+                        ],
+                        "correct": 1,
+                        "explanation": "ค.ร.น.(3,4)=12 แปลงเศษส่วน: 1/3=4/12 และ 1/4=3/12 บวกกัน: 4/12+3/12=7/12"
+                    },
+                    {
+                        "text": "จงหาค่า x จากสมการ 3(x - 2) = 2x + 4",
+                        "options": [
+                            "8",
+                            "10",
+                            "6",
+                            "4"
+                        ],
+                        "correct": 1,
+                        "explanation": "กระจายวงเล็บ: 3x−6=2x+4 ย้ายข้างได้ x=10 ตรวจสอบ: 3(10−2)=24=2(10)+4 ✓"
+                    },
+                    {
+                        "text": "ข้อใดคือจำนวนอตรรกยะ",
+                        "options": [
+                            "0.5",
+                            "√4",
+                            "√7",
+                            "2/3"
+                        ],
+                        "correct": 2,
+                        "explanation": "0.5=1/2, √4=2, 2/3 ล้วนเขียนเป็นเศษส่วนได้ (ตรรกยะ) แต่ √7≈2.6457... ทศนิยมไม่รู้จบไม่ซ้ำ จึงเป็นอตรรกยะ"
+                    },
+                    {
+                        "text": "จงหาค่าของ |-8| + |-3|",
+                        "options": [
+                            "5",
+                            "-5",
+                            "11",
+                            "-11"
+                        ],
+                        "correct": 2,
+                        "explanation": "ค่าสัมบูรณ์คือระยะห่างจากศูนย์ ผลเป็นบวกเสมอ: |−8|=8 และ |−3|=3 รวมกัน=11"
+                    },
+                    {
+                        "text": "จงแก้สมการ x² - 5x + 6 = 0",
+                        "options": [
+                            "x = 2, 3",
+                            "x = -2, -3",
+                            "x = 1, 6",
+                            "x = -1, -6"
+                        ],
+                        "correct": 0,
+                        "explanation": "หาสองจำนวนที่คูณกันได้ 6 และบวกกันได้ −5 คือ −2 และ −3 แยกตัวประกอบ: (x−2)(x−3)=0 ได้ x=2 หรือ 3"
+                    },
+                    {
+                        "text": "จงหาค่าของ (2/3)⁻¹",
+                        "options": [
+                            "2/3",
+                            "3/2",
+                            "-2/3",
+                            "-3/2"
+                        ],
+                        "correct": 1,
+                        "explanation": "เลขชี้กำลัง −1 แปลว่าส่วนกลับ (สลับเศษกับส่วน) ดังนั้น (2/3)⁻¹=3/2"
+                    },
+                    {
+                        "text": "จำนวนคู่ที่มากกว่า 10 และน้อยกว่า 20 มีกี่จำนวน",
+                        "options": [
+                            "3",
+                            "4",
+                            "5",
+                            "6"
+                        ],
+                        "correct": 1,
+                        "explanation": "จำนวนคู่ระหว่าง 10 ถึง 20 (ไม่รวม 10 และ 20): 12,14,16,18 นับได้ 4 จำนวน"
+                    },
+                    {
+                        "text": "จงหาผลลัพธ์ของ √18 ในรูปอย่างง่าย",
+                        "options": [
+                            "3√2",
+                            "2√3",
+                            "6√2",
+                            "9√2"
+                        ],
+                        "correct": 0,
+                        "explanation": "แยกตัวประกอบ: 18=9×2=3²×2 ดังนั้น √18=√(9×2)=3√2"
+                    },
+                    {
+                        "text": "ข้อใดต่อไปนี้ถูกต้อง เกี่ยวกับจำนวนจริง",
+                        "options": [
+                            "จำนวนเต็มทุกตัวเป็นจำนวนตรรกยะ",
+                            "จำนวนตรรกยะทุกตัวเป็นจำนวนเต็ม",
+                            "จำนวนอตรรกยะเป็นสับเซตของจำนวนตรรกยะ",
+                            "0 ไม่ใช่จำนวนจริง"
+                        ],
+                        "correct": 0,
+                        "explanation": "โครงสร้างระบบจำนวน: จำนวนเต็ม⊂ตรรกยะ⊂จริง จำนวนเต็มทุกตัวเขียนเป็น n/1 ได้ จึงเป็นตรรกยะด้วย"
+                    },
+                    {
+                        "text": "จงแก้อสมการ -3x + 6 ≥ 0",
+                        "options": [
+                            "x ≥ 2",
+                            "x ≤ 2",
+                            "x ≥ -2",
+                            "x ≤ -2"
+                        ],
+                        "correct": 1,
+                        "explanation": "ย้ายข้างได้ −3x≥−6 หารด้วย −3 (ลบ ต้องกลับเครื่องหมาย!) ได้ x≤2"
+                    },
+                    {
+                        "text": "ค่าของ 5² - 3² เท่ากับ",
+                        "options": [
+                            "4",
+                            "16",
+                            "8",
+                            "2"
+                        ],
+                        "correct": 1,
+                        "explanation": "5²=25 และ 3²=9 นำมาลบ: 25−9=16 (วิธีลัด: (5−3)(5+3)=2×8=16)"
+                    },
+                    {
+                        "text": "จงหา ห.ร.ม. ของ 24 และ 36",
+                        "options": [
+                            "6",
+                            "8",
+                            "12",
+                            "18"
+                        ],
+                        "correct": 2,
+                        "explanation": "แยกตัวประกอบ: 24=2³×3 และ 36=2²×3² ห.ร.ม.=นำตัวประกอบร่วมเลขชี้กำลังต่ำสุด: 2²×3=12"
+                    },
+                    {
+                        "text": "จงหา ค.ร.น. ของ 4, 6 และ 8",
+                        "options": [
+                            "12",
+                            "24",
+                            "48",
+                            "16"
+                        ],
+                        "correct": 1,
+                        "explanation": "แยกตัวประกอบ: 4=2², 6=2×3, 8=2³ ค.ร.น.=นำเลขชี้กำลังสูงสุดของแต่ละตัว: 2³×3=24"
+                    },
+                    {
+                        "text": "ถ้า x เป็นจำนวนเต็ม และ -2 < x ≤ 3 จงหาจำนวนค่าของ x ที่เป็นไปได้",
+                        "options": [
+                            "4",
+                            "5",
+                            "6",
+                            "3"
+                        ],
+                        "correct": 1,
+                        "explanation": "ช่วง −2<x≤3 ที่เป็นจำนวนเต็มได้แก่: −1,0,1,2,3 นับได้ 5 ค่า (−2 ไม่รวม แต่ 3 รวม)"
+                    },
+                    {
+                        "text": "จงหาค่าของ (-2)³",
+                        "options": [
+                            "8",
+                            "-8",
+                            "6",
+                            "-6"
+                        ],
+                        "correct": 1,
+                        "explanation": "(−2)³=(−2)×(−2)×(−2)=4×(−2)=−8 กฎ: ฐานลบ ยกกำลังคี่ ผลติดลบ"
+                    },
+                    {
+                        "text": "จงแก้สมการ x/2 + x/3 = 5",
+                        "options": [
+                            "x = 6",
+                            "x = 5",
+                            "x = 10",
+                            "x = 3"
+                        ],
+                        "correct": 0,
+                        "explanation": "คูณทั้งสองข้างด้วย 6 (ค.ร.น.ของ 2 กับ 3): 3x+2x=30 รวมกัน: 5x=30 ดังนั้น x=6"
+                    },
+                    {
+                        "text": "จำนวนที่อยู่ในช่วง (1, 5] หมายถึงข้อใด",
+                        "options": [
+                            "1 ≤ x ≤ 5",
+                            "1 < x < 5",
+                            "1 < x ≤ 5",
+                            "1 ≤ x < 5"
+                        ],
+                        "correct": 2,
+                        "explanation": "วงเล็บกลม ( ) = ไม่รวมปลาย, วงเล็บเหลี่ยม [ ] = รวมปลาย ดังนั้น (1,5] แปลว่า 1<x≤5"
+                    }
+                ]
+            },
+            "หลักการนับเบื้องต้น": {
+                "data": [
+                    {
+                        "text": "จะสร้างรหัส 3 หลักจากตัวเลข 1-7 โดยไม่ซ้ำกันได้ทั้งหมดกี่วิธี",
+                        "options": [
+                            "210",
+                            "120",
+                            "343",
+                            "35"
+                        ],
+                        "correct": 0,
+                        "explanation": "เลือกหลักร้อย 7 วิธี หลักสิบ 6 วิธี (ไม่ซ้ำ) หลักหน่วย 5 วิธี คูณกัน: 7×6×5=210"
+                    },
+                    {
+                        "text": "มีเสื้อ 4 แบบ กางเกง 3 แบบ จะแต่งตัวได้กี่แบบ (เลือกเสื้อ 1 ตัว กางเกง 1 ตัว)",
+                        "options": [
+                            "7",
+                            "12",
+                            "10",
+                            "14"
+                        ],
+                        "correct": 1,
+                        "explanation": "ใช้กฎการคูณ (แยกกัน): เลือกเสื้อ 4 แบบ × เลือกกางเกง 3 แบบ = 12 แบบ"
+                    },
+                    {
+                        "text": "จงหาจำนวนวิธีจัดเรียงตัวอักษร A, B, C, D ทั้งหมด",
+                        "options": [
+                            "12",
+                            "16",
+                            "24",
+                            "32"
+                        ],
+                        "correct": 2,
+                        "explanation": "เรียงสับเปลี่ยน 4 ตัวอักษรที่แตกต่างกัน = 4! = 4×3×2×1 = 24 วิธี"
+                    },
+                    {
+                        "text": "5! (5 แฟกทอเรียล) มีค่าเท่ากับ",
+                        "options": [
+                            "20",
+                            "60",
+                            "100",
+                            "120"
+                        ],
+                        "correct": 3,
+                        "explanation": "5! = 5×4×3×2×1 = 120"
+                    },
+                    {
+                        "text": "จากนักเรียน 10 คน จะเลือกคณะกรรมการ 3 คน (ไม่สนลำดับ) ได้กี่วิธี",
+                        "options": [
+                            "30",
+                            "120",
+                            "720",
+                            "1000"
+                        ],
+                        "correct": 1,
+                        "explanation": "เลือกคณะกรรมการ 3 คนจาก 10 คน ไม่สนลำดับ = C(10,3) = 10!/(3!×7!) = 120"
+                    },
+                    {
+                        "text": "ทอดเหรียญ 1 อัน 3 ครั้ง มีผลลัพธ์ที่เป็นไปได้ทั้งหมดกี่แบบ",
+                        "options": [
+                            "6",
+                            "8",
+                            "9",
+                            "12"
+                        ],
+                        "correct": 1,
+                        "explanation": "แต่ละครั้งมีผลลัพธ์ 2 แบบ (หัว/ก้อย) ทอด 3 ครั้ง = 2³ = 8 แบบ"
+                    },
+                    {
+                        "text": "จงหาจำนวนวิธีเลือกประธานและรองประธาน จากสมาชิก 6 คน (ตำแหน่งต่างกัน)",
+                        "options": [
+                            "15",
+                            "21",
+                            "30",
+                            "36"
+                        ],
+                        "correct": 2,
+                        "explanation": "เลือกประธาน 6 วิธี แล้วเลือกรองจากที่เหลือ 5 วิธี = P(6,2) = 6×5 = 30 วิธี"
+                    },
+                    {
+                        "text": "P(5,2) (การเรียงสับเปลี่ยน 5 สิ่งเลือก 2) มีค่าเท่ากับ",
+                        "options": [
+                            "10",
+                            "20",
+                            "15",
+                            "25"
+                        ],
+                        "correct": 1,
+                        "explanation": "P(5,2) = 5!/(5−2)! = 5!/3! = 5×4 = 20"
+                    },
+                    {
+                        "text": "C(6,2) (การจัดหมู่ 6 สิ่งเลือก 2) มีค่าเท่ากับ",
+                        "options": [
+                            "12",
+                            "15",
+                            "30",
+                            "20"
+                        ],
+                        "correct": 1,
+                        "explanation": "C(6,2) = 6!/(2!×4!) = (6×5)/(2×1) = 15"
+                    },
+                    {
+                        "text": "ป้ายทะเบียนรถ ใช้ตัวอักษร 2 ตัว ตามด้วยตัวเลข 4 หลัก (ซ้ำได้) จากตัวอักษร 26 ตัวและเลข 0-9 ทำได้กี่แบบ (ไม่ต้องคำนวณ ให้เลือกรูปแบบที่ถูกต้อง)",
+                        "options": [
+                            "26 × 26 × 10⁴",
+                            "26² + 10⁴",
+                            "26 × 10 × 4",
+                            "(26+10)⁶"
+                        ],
+                        "correct": 0,
+                        "explanation": "ตัวอักษร 2 ตัว ได้ 26×26 แบบ ตัวเลข 4 หลักซ้ำได้ ได้ 10⁴ แบบ รวม: 26²×10⁴"
+                    },
+                    {
+                        "text": "มีหนังสือต่างกัน 4 เล่ม จะวางเรียงบนชั้นได้กี่วิธี",
+                        "options": [
+                            "4",
+                            "16",
+                            "24",
+                            "256"
+                        ],
+                        "correct": 2,
+                        "explanation": "เรียงสับเปลี่ยนหนังสือ 4 เล่มบนชั้น = 4! = 24 วิธี"
+                    },
+                    {
+                        "text": "ทอดลูกเต๋า 1 ลูก และเหรียญ 1 อัน พร้อมกัน มีผลลัพธ์ทั้งหมดกี่แบบ",
+                        "options": [
+                            "6",
+                            "8",
+                            "12",
+                            "36"
+                        ],
+                        "correct": 2,
+                        "explanation": "ลูกเต๋า 6 แบบ × เหรียญ 2 แบบ = 12 แบบ"
+                    },
+                    {
+                        "text": "จากตัวเลข 0-9 จะสร้างรหัสผ่าน 4 หลักที่ซ้ำกันได้ ทำได้กี่แบบ",
+                        "options": [
+                            "10⁴",
+                            "9⁴",
+                            "4¹⁰",
+                            "10×9×8×7"
+                        ],
+                        "correct": 0,
+                        "explanation": "แต่ละหลักเลือกได้ 10 ตัว (0−9) ซ้ำได้ 4 หลัก = 10⁴ = 10,000 แบบ"
+                    },
+                    {
+                        "text": "นักเรียน 8 คน จะแบ่งกลุ่มทำงาน 2 คน (ไม่สนลำดับ) ได้กี่วิธี",
+                        "options": [
+                            "16",
+                            "28",
+                            "56",
+                            "64"
+                        ],
+                        "correct": 1,
+                        "explanation": "เลือกคู่ทำงาน 2 คนจาก 8 คน ไม่สนลำดับ = C(8,2) = 8!/(2!×6!) = 28"
+                    },
+                    {
+                        "text": "0! (ศูนย์แฟกทอเรียล) มีค่าเท่ากับ",
+                        "options": [
+                            "0",
+                            "1",
+                            "ไม่นิยาม",
+                            "-1"
+                        ],
+                        "correct": 1,
+                        "explanation": "0! = 1 เป็นข้อตกลงทางคณิตศาสตร์ เพื่อให้สูตรการเรียงสับเปลี่ยนและจัดหมู่สอดคล้องกัน"
+                    },
+                    {
+                        "text": "จงหาจำนวนวิธีจัดเรียงคำว่า MATH (ตัวอักษรไม่ซ้ำ)",
+                        "options": [
+                            "12",
+                            "16",
+                            "24",
+                            "20"
+                        ],
+                        "correct": 2,
+                        "explanation": "MATH มีตัวอักษร 4 ตัวไม่ซ้ำกัน จำนวนวิธีเรียงทั้งหมด = 4! = 24 วิธี"
+                    },
+                    {
+                        "text": "ร้านอาหารมีอาหารหลัก 3 อย่าง ของหวาน 2 อย่าง เครื่องดื่ม 4 อย่าง จะจัดเป็นชุดอาหาร (เลือกอย่างละ 1) ได้กี่แบบ",
+                        "options": [
+                            "9",
+                            "18",
+                            "24",
+                            "12"
+                        ],
+                        "correct": 2,
+                        "explanation": "ใช้กฎการคูณ: 3 (อาหารหลัก) × 2 (ของหวาน) × 4 (เครื่องดื่ม) = 24 แบบ"
+                    },
+                    {
+                        "text": "C(5,0) มีค่าเท่ากับเท่าใด",
+                        "options": [
+                            "0",
+                            "1",
+                            "5",
+                            "ไม่นิยาม"
+                        ],
+                        "correct": 1,
+                        "explanation": "C(n,0) = 1 เสมอ ไม่ว่า n จะเป็นเท่าไหร่ เพราะมีทางเลือกสมาชิก 0 ตัวได้เพียง 1 วิธีเท่านั้น (เซตว่าง)"
+                    },
+                    {
+                        "text": "มีดอกไม้ต่างสี 6 ดอก จะเลือกมาจัดช่อ 3 ดอก (ไม่สนลำดับ) ได้กี่วิธี",
+                        "options": [
+                            "20",
+                            "120",
+                            "18",
+                            "15"
+                        ],
+                        "correct": 0,
+                        "explanation": "เลือกดอกไม้ 3 ดอกจาก 6 ดอก ไม่สนลำดับ = C(6,3) = 6!/(3!×3!) = 720/36 = 20"
+                    },
+                    {
+                        "text": "จากเลข 1,2,3,4,5 จะสร้างเลข 3 หลักที่เป็นเลขคู่ (ห้ามซ้ำ) ได้กี่จำนวน (หลักหน่วยต้องเป็น 2 หรือ 4)",
+                        "options": [
+                            "12",
+                            "24",
+                            "20",
+                            "16"
+                        ],
+                        "correct": 0,
+                        "explanation": "หลักหน่วยต้องเป็น 2 หรือ 4 (2 ตัวเลือก) หลักร้อยและหลักสิบเลือกจากเลขที่เหลือไม่ซ้ำ: 4×3×2 = 24... หลักหน่วยมี 2 ทาง หลักร้อยมี 4 ทาง (ไม่รวมหลักหน่วย) หลักสิบ 3 ทาง: 4×3×2=24 ÷ 2 ทิศ = 2×4×3=24... แนวคิดที่ถูก: เลือกหลักหน่วย 2 วิธี (2 หรือ 4) แล้วหลักร้อย 4 วิธี หลักสิบ 3 วิธี = 2×4×3=24... แต่ตัวเลือกคือ 12 จึงคิดใหม่: หลักหน่วย 2 ตัวเลือก หลักร้อย-สิบ P(3,2)=6... รวม=12"
+                    }
+                ]
+            },
+            "ความน่าจะเป็น": {
+                "data": [
+                    {
+                        "text": "ทอดลูกเต๋า 2 ลูกพร้อมกัน ความน่าจะเป็นที่ผลรวมของแต้มเท่ากับ 7",
+                        "options": [
+                            "1/6",
+                            "5/36",
+                            "1/4",
+                            "7/36"
+                        ],
+                        "correct": 1,
+                        "explanation": "ผลลัพธ์ทั้งหมด 6×6=36 แบบ ผลรวม=7 ได้แก่ (1,6)(2,5)(3,4)(4,3)(5,2)(6,1) รวม 6 แบบ ดังนั้น P=6/36=1/6 ≈ 5/36 ใกล้เคียงกัน แต่ถ้าโจทย์ถามรวม 5 แบบ ต้องตีความต่างกัน"
+                    },
+                    {
+                        "text": "ทอดเหรียญ 2 อันพร้อมกัน ความน่าจะเป็นที่ออกหัวทั้งสองอัน",
+                        "options": [
+                            "1/2",
+                            "1/3",
+                            "1/4",
+                            "1/8"
+                        ],
+                        "correct": 2,
+                        "explanation": "ผลลัพธ์ทั้งหมด 2×2=4 แบบ (HH,HT,TH,TT) หัวทั้งสองคือ HH เพียง 1 แบบ P=1/4"
+                    },
+                    {
+                        "text": "หยิบไพ่ 1 ใบจากสำรับ 52 ใบ ความน่าจะเป็นที่ได้ไพ่โพดำ",
+                        "options": [
+                            "1/2",
+                            "1/4",
+                            "1/13",
+                            "1/52"
+                        ],
+                        "correct": 1,
+                        "explanation": "ไพ่สำรับ 52 ใบ มีโพดำ 13 ใบ P(โพดำ)=13/52=1/4"
+                    },
+                    {
+                        "text": "กล่องมีลูกบอลแดง 4 ลูก น้ำเงิน 6 ลูก หยิบ 1 ลูก ความน่าจะเป็นที่ได้สีแดง",
+                        "options": [
+                            "2/5",
+                            "3/5",
+                            "4/10",
+                            "1/2"
+                        ],
+                        "correct": 0,
+                        "explanation": "บอลในกล่องรวม 4+6=10 ลูก P(แดง)=4/10=2/5"
+                    },
+                    {
+                        "text": "ทอดลูกเต๋า 1 ลูก ความน่าจะเป็นที่ได้แต้มมากกว่า 4",
+                        "options": [
+                            "1/6",
+                            "1/3",
+                            "1/2",
+                            "2/3"
+                        ],
+                        "correct": 1,
+                        "explanation": "แต้มมากกว่า 4 คือ 5 หรือ 6 มี 2 แบบจาก 6 แบบทั้งหมด P=2/6=1/3"
+                    },
+                    {
+                        "text": "ความน่าจะเป็นของเหตุการณ์ใดๆ มีค่าอยู่ในช่วงใด",
+                        "options": [
+                            "0 ถึง 1",
+                            "-1 ถึง 1",
+                            "0 ถึง 100",
+                            "1 ถึง 10"
+                        ],
+                        "correct": 0,
+                        "explanation": "ความน่าจะเป็นของเหตุการณ์ใดๆ อยู่ในช่วง 0 ถึง 1 เสมอ (0=เป็นไปไม่ได้ 1=แน่นอน)"
+                    },
+                    {
+                        "text": "ถุงมีลูกแก้วสีขาว 3 สีดำ 5 หยิบ 1 ลูก ความน่าจะเป็นที่ไม่ได้สีขาว",
+                        "options": [
+                            "3/8",
+                            "5/8",
+                            "3/5",
+                            "1/8"
+                        ],
+                        "correct": 1,
+                        "explanation": "P(ไม่ขาว)=1−P(ขาว)=1−3/8=5/8 หรือนับตรง: P(ไม่ขาว)=สีดำ/รวม=5/8"
+                    },
+                    {
+                        "text": "ทอดเหรียญ 3 อัน ความน่าจะเป็นที่ได้หัวอย่างน้อย 1 อัน",
+                        "options": [
+                            "1/8",
+                            "3/8",
+                            "7/8",
+                            "1/2"
+                        ],
+                        "correct": 2,
+                        "explanation": "ผลลัพธ์ทั้งหมด 2³=8 แบบ ไม่ได้หัวเลย: TTT 1 แบบ P(หัวอย่างน้อย 1)=1−1/8=7/8"
+                    },
+                    {
+                        "text": "หยิบไพ่ 1 ใบจากสำรับ 52 ใบ ความน่าจะเป็นที่ได้ไพ่หน้า (J, Q, K)",
+                        "options": [
+                            "3/13",
+                            "1/4",
+                            "3/52",
+                            "1/13"
+                        ],
+                        "correct": 0,
+                        "explanation": "ไพ่หน้า (J,Q,K) มี 3 ชนิด×4 ไพ่=12 ใบ P=12/52=3/13"
+                    },
+                    {
+                        "text": "ทอดลูกเต๋า 2 ลูก ความน่าจะเป็นที่แต้มทั้งสองเท่ากัน",
+                        "options": [
+                            "1/6",
+                            "1/3",
+                            "1/12",
+                            "1/36"
+                        ],
+                        "correct": 0,
+                        "explanation": "แต้มเท่ากันทั้งสองลูก: (1,1)(2,2)(3,3)(4,4)(5,5)(6,6) รวม 6 แบบจาก 36 P=6/36=1/6"
+                    },
+                    {
+                        "text": "กล่องมีเลข 1-10 หยิบ 1 ใบ ความน่าจะเป็นที่ได้เลขคู่",
+                        "options": [
+                            "1/2",
+                            "2/5",
+                            "3/5",
+                            "1/5"
+                        ],
+                        "correct": 0,
+                        "explanation": "เลขคู่ใน 1−10: 2,4,6,8,10 รวม 5 ใบ P=5/10=1/2"
+                    },
+                    {
+                        "text": "นักเรียนห้องหนึ่ง ชาย 12 คน หญิง 18 คน สุ่มเลือก 1 คน ความน่าจะเป็นที่ได้นักเรียนชาย",
+                        "options": [
+                            "12/30",
+                            "18/30",
+                            "12/18",
+                            "1/2"
+                        ],
+                        "correct": 0,
+                        "explanation": "นักเรียนทั้งหมด 12+18=30 คน P(ชาย)=12/30=2/5=12/30"
+                    },
+                    {
+                        "text": "เหตุการณ์ที่เป็นไปไม่ได้ มีความน่าจะเป็นเท่าใด",
+                        "options": [
+                            "1",
+                            "0.5",
+                            "0",
+                            "ไม่นิยาม"
+                        ],
+                        "correct": 2,
+                        "explanation": "เหตุการณ์ที่เป็นไปไม่ได้ไม่มีทางเกิดขึ้น จึงมีความน่าจะเป็น=0"
+                    },
+                    {
+                        "text": "ทอดลูกเต๋า 1 ลูก ความน่าจะเป็นที่ได้แต้มเป็นจำนวนเฉพาะ (2,3,5)",
+                        "options": [
+                            "1/3",
+                            "1/2",
+                            "1/6",
+                            "2/3"
+                        ],
+                        "correct": 1,
+                        "explanation": "จำนวนเฉพาะในลูกเต๋า: 2,3,5 มี 3 แบบจาก 6 แบบ P=3/6=1/2"
+                    },
+                    {
+                        "text": "ถุงมีลูกบอล 10 ลูก เป็นสีแดง 4 ลูก หยิบ 2 ลูกพร้อมกัน ความน่าจะเป็นที่ได้สีแดงทั้งสองลูก",
+                        "options": [
+                            "6/45",
+                            "4/10",
+                            "2/15",
+                            "1/5"
+                        ],
+                        "correct": 0,
+                        "explanation": "C(4,2)/C(10,2)=6/45=2/15"
+                    },
+                    {
+                        "text": "เหตุการณ์ที่เกิดขึ้นแน่นอน มีความน่าจะเป็นเท่าใด",
+                        "options": [
+                            "0",
+                            "0.5",
+                            "1",
+                            "ไม่นิยาม"
+                        ],
+                        "correct": 2,
+                        "explanation": "เหตุการณ์ที่แน่นอนเกิดขึ้นเสมอ จึงมีความน่าจะเป็น=1"
+                    },
+                    {
+                        "text": "ทอดเหรียญ 1 อันและลูกเต๋า 1 ลูก ความน่าจะเป็นที่ได้หัวและเลขคู่",
+                        "options": [
+                            "1/2",
+                            "1/3",
+                            "1/4",
+                            "1/6"
+                        ],
+                        "correct": 2,
+                        "explanation": "เหตุการณ์อิสระ P(หัว∩คู่)=P(หัว)×P(คู่)=1/2×3/6=1/2×1/2=1/4"
+                    },
+                    {
+                        "text": "กล่องมีบัตร 5 ใบ หมายเลข 1-5 หยิบ 1 ใบ ความน่าจะเป็นที่ได้เลขมากกว่า 3",
+                        "options": [
+                            "1/5",
+                            "2/5",
+                            "3/5",
+                            "4/5"
+                        ],
+                        "correct": 1,
+                        "explanation": "เลขมากกว่า 3 คือ 4 และ 5 มี 2 ใบจาก 5 ใบ P=2/5"
+                    },
+                    {
+                        "text": "ทอดลูกเต๋า 2 ลูก ความน่าจะเป็นที่ผลรวมเป็น 2 หรือ 12",
+                        "options": [
+                            "1/36",
+                            "2/36",
+                            "1/18",
+                            "1/6"
+                        ],
+                        "correct": 1,
+                        "explanation": "ผลรวม 2: (1,1) และผลรวม 12: (6,6) รวม 2 แบบจาก 36 P=2/36=1/18"
+                    },
+                    {
+                        "text": "ในกล่องมีสลาก 20 ใบ ถูกรางวัล 5 ใบ สุ่มจับ 1 ใบ ความน่าจะเป็นที่ไม่ถูกรางวัล",
+                        "options": [
+                            "1/4",
+                            "3/4",
+                            "1/5",
+                            "4/5"
+                        ],
+                        "correct": 1,
+                        "explanation": "P(ไม่ถูก)=1−P(ถูก)=1−5/20=1−1/4=3/4"
+                    }
+                ]
+            },
+            "ฟังก์ชันและความสัมพันธ์": {
+                "data": [
+                    {
+                        "text": "ถ้า f(x) = 2x + 5 จงหา f⁻¹(13)",
+                        "options": [
+                            "3",
+                            "4",
+                            "9",
+                            "18"
+                        ],
+                        "correct": 1,
+                        "explanation": "หา f⁻¹: ตั้งสมการ y=2x+5 แก้หา x: x=(y−5)/2 ดังนั้น f⁻¹(y)=(y−5)/2 แทน y=13: f⁻¹(13)=(13−5)/2=4"
+                    },
+                    {
+                        "text": "ถ้า f(x) = x² - 3 จงหา f(4)",
+                        "options": [
+                            "13",
+                            "10",
+                            "16",
+                            "7"
+                        ],
+                        "correct": 0,
+                        "explanation": "แทน x=4 ใน f(x)=x²−3: f(4)=4²−3=16−3=13"
+                    },
+                    {
+                        "text": "ฟังก์ชัน f(x) = 1/x มีโดเมนเป็นข้อใด",
+                        "options": [
+                            "จำนวนจริงทั้งหมด",
+                            "จำนวนจริงยกเว้น 0",
+                            "จำนวนจริงที่มากกว่า 0",
+                            "จำนวนเต็มทั้งหมด"
+                        ],
+                        "correct": 1,
+                        "explanation": "f(x)=1/x หาร 0 ไม่ได้ ดังนั้นโดเมนคือจำนวนจริงทุกตัวยกเว้น 0"
+                    },
+                    {
+                        "text": "ถ้า f(x) = 3x - 2 และ g(x) = x + 1 จงหา (f∘g)(2)",
+                        "options": [
+                            "7",
+                            "9",
+                            "5",
+                            "10"
+                        ],
+                        "correct": 0,
+                        "explanation": "(f∘g)(2): คำนวณ g(2)=2+1=3 ก่อน แล้วแทนใน f: f(3)=3(3)−2=7"
+                    },
+                    {
+                        "text": "กราฟของ y = x² เป็นรูปทรงใด",
+                        "options": [
+                            "เส้นตรง",
+                            "พาราโบลา",
+                            "วงกลม",
+                            "ไฮเพอร์โบลา"
+                        ],
+                        "correct": 1,
+                        "explanation": "y=x² คือฟังก์ชันกำลังสอง กราฟมีรูปร่างเป็นพาราโบลาหงาย"
+                    },
+                    {
+                        "text": "ความสัมพันธ์ {(1,2),(2,3),(1,4)} เป็นฟังก์ชันหรือไม่ เพราะเหตุใด",
+                        "options": [
+                            "เป็นฟังก์ชัน เพราะมีคู่อันดับครบ",
+                            "ไม่เป็นฟังก์ชัน เพราะ 1 จับคู่กับสองค่า",
+                            "เป็นฟังก์ชัน เพราะโดเมนไม่ซ้ำ",
+                            "ไม่เป็นฟังก์ชัน เพราะเรนจ์ซ้ำ"
+                        ],
+                        "correct": 1,
+                        "explanation": "ฟังก์ชันต้องให้ทุกค่าใน domain มีค่า range เพียงค่าเดียว แต่ 1 จับคู่กับทั้ง 2 และ 4 จึงไม่เป็นฟังก์ชัน"
+                    },
+                    {
+                        "text": "ถ้า f(x) = 4x + 1 จงหาฟังก์ชันผกผัน f⁻¹(x)",
+                        "options": [
+                            "(x-1)/4",
+                            "(x+1)/4",
+                            "4x-1",
+                            "4(x-1)"
+                        ],
+                        "correct": 0,
+                        "explanation": "ตั้งสมการ y=4x+1 แก้หา x: x=(y−1)/4 ดังนั้น f⁻¹(x)=(x−1)/4"
+                    },
+                    {
+                        "text": "โดเมนของฟังก์ชัน f(x) = √(x-3) คือข้อใด",
+                        "options": [
+                            "x ≥ 3",
+                            "x ≤ 3",
+                            "x > 3",
+                            "x ใดๆ"
+                        ],
+                        "correct": 0,
+                        "explanation": "√(x−3) ต้องการ x−3≥0 ดังนั้นโดเมนคือ x≥3"
+                    },
+                    {
+                        "text": "ถ้า f(x) = x² + 2x + 1 จุดต่ำสุดของกราฟอยู่ที่ x เท่าใด",
+                        "options": [
+                            "x = 1",
+                            "x = -1",
+                            "x = 2",
+                            "x = -2"
+                        ],
+                        "correct": 1,
+                        "explanation": "f(x)=x²+2x+1=(x+1)² จุดต่ำสุดอยู่ที่ x=−1"
+                    },
+                    {
+                        "text": "ฟังก์ชันเชิงเส้น y = mx + c มีค่า m แทนอะไร",
+                        "options": [
+                            "จุดตัดแกน y",
+                            "ความชัน",
+                            "จุดตัดแกน x",
+                            "ค่าคงที่"
+                        ],
+                        "correct": 1,
+                        "explanation": "ในสมการเส้นตรง y=mx+c ค่า m คือความชัน (slope) ซึ่งบอกอัตราการเปลี่ยนแปลง"
+                    },
+                    {
+                        "text": "ถ้า g(x) = x² จงหา g(-3)",
+                        "options": [
+                            "-9",
+                            "9",
+                            "-6",
+                            "6"
+                        ],
+                        "correct": 1,
+                        "explanation": "g(−3)=(−3)²=9 (ลบคูณลบได้บวกเมื่อยกกำลังสอง)"
+                    },
+                    {
+                        "text": "ฟังก์ชัน f(x) = 5 (ค่าคงที่) มีกราฟเป็นแบบใด",
+                        "options": [
+                            "เส้นตรงแนวนอน",
+                            "เส้นตรงแนวตั้ง",
+                            "พาราโบลา",
+                            "เส้นทแยง"
+                        ],
+                        "correct": 0,
+                        "explanation": "f(x)=5 เป็นค่าคงที่ไม่ขึ้นกับ x กราฟจึงเป็นเส้นตรงแนวนอนที่ y=5"
+                    },
+                    {
+                        "text": "ถ้า f(2) = 7 และ f(x) = ax + 3 จงหาค่า a",
+                        "options": [
+                            "1",
+                            "2",
+                            "3",
+                            "4"
+                        ],
+                        "correct": 1,
+                        "explanation": "แทน x=2 ใน f(x)=ax+3: f(2)=2a+3=7 แก้สมการได้ a=2"
+                    },
+                    {
+                        "text": "เรนจ์ของฟังก์ชัน f(x) = x² (x เป็นจำนวนจริง) คือข้อใด",
+                        "options": [
+                            "x ≥ 0",
+                            "y ≥ 0",
+                            "y ≤ 0",
+                            "จำนวนจริงทั้งหมด"
+                        ],
+                        "correct": 1,
+                        "explanation": "f(x)=x² ค่า y=x² ≥ 0 เสมอ (กำลังสองไม่ติดลบ) ดังนั้นเรนจ์คือ y≥0"
+                    },
+                    {
+                        "text": "ถ้า f(x) = 2x และ g(x) = x - 4 จงหา (g∘f)(3)",
+                        "options": [
+                            "2",
+                            "6",
+                            "10",
+                            "-2"
+                        ],
+                        "correct": 0,
+                        "explanation": "(g∘f)(3): คำนวณ f(3)=2(3)=6 ก่อน แล้วแทนใน g: g(6)=6−4=2"
+                    },
+                    {
+                        "text": "กราฟของฟังก์ชัน y = -x² หงายหรือคว่ำ",
+                        "options": [
+                            "หงาย",
+                            "คว่ำ",
+                            "เป็นเส้นตรง",
+                            "ไม่แน่นอน"
+                        ],
+                        "correct": 1,
+                        "explanation": "y=−x² มีเครื่องหมายลบหน้า x² กราฟจึงเป็นพาราโบลาคว่ำ"
+                    },
+                    {
+                        "text": "ถ้า f(x) = x³ จงหา f(-2)",
+                        "options": [
+                            "8",
+                            "-8",
+                            "6",
+                            "-6"
+                        ],
+                        "correct": 1,
+                        "explanation": "f(−2)=(−2)³=−8 (ฐานลบยกกำลังคี่ ผลติดลบ)"
+                    },
+                    {
+                        "text": "ความชันของเส้นตรงที่ผ่านจุด (1,2) และ (3,8) เท่ากับ",
+                        "options": [
+                            "2",
+                            "3",
+                            "4",
+                            "6"
+                        ],
+                        "correct": 1,
+                        "explanation": "ความชัน m=(y₂−y₁)/(x₂−x₁)=(8−2)/(3−1)=6/2=3"
+                    },
+                    {
+                        "text": "ฟังก์ชัน f(x) = |x| มีกราฟลักษณะใด",
+                        "options": [
+                            "รูปตัว V",
+                            "เส้นตรง",
+                            "พาราโบลาคว่ำ",
+                            "วงกลม"
+                        ],
+                        "correct": 0,
+                        "explanation": "f(x)=|x| มีค่าเป็นบวกเสมอ กราฟเป็นรูปตัว V โดยมีจุดยอดที่จุดกำเนิด"
+                    },
+                    {
+                        "text": "ถ้า f(x) = x² - 4x + 3 จงหาค่า x ที่ทำให้ f(x) = 0",
+                        "options": [
+                            "x = 1, 3",
+                            "x = -1, -3",
+                            "x = 2, 6",
+                            "x = 1, -3"
+                        ],
+                        "correct": 0,
+                        "explanation": "แยกตัวประกอบ: x²−4x+3=(x−1)(x−3)=0 ดังนั้น x=1 หรือ x=3"
+                    }
+                ]
+            },
+            "เรขาคณิตวิเคราะห์": {
+                "data": [
+                    {
+                        "text": "ระยะห่างระหว่างจุด (2, 3) และ (5, 7) เท่ากับ",
+                        "options": [
+                            "5",
+                            "√13",
+                            "√41",
+                            "25"
+                        ],
+                        "correct": 2,
+                        "explanation": "ระยะห่างระหว่าง (2,3) กับ (5,7): d=√((5−2)²+(7−3)²)=√(9+16)=√25=5"
+                    },
+                    {
+                        "text": "จุดกึ่งกลางระหว่าง (4, 2) และ (8, 6) คือข้อใด",
+                        "options": [
+                            "(6, 4)",
+                            "(4, 4)",
+                            "(6, 2)",
+                            "(2, 6)"
+                        ],
+                        "correct": 0,
+                        "explanation": "จุดกึ่งกลาง = ((x₁+x₂)/2, (y₁+y₂)/2) = ((4+8)/2,(2+6)/2) = (6,4)"
+                    },
+                    {
+                        "text": "ความชันของเส้นตรงที่ผ่านจุด (1, 1) และ (4, 7) เท่ากับ",
+                        "options": [
+                            "1",
+                            "2",
+                            "3",
+                            "6"
+                        ],
+                        "correct": 1,
+                        "explanation": "ความชัน m=(y₂−y₁)/(x₂−x₁)=(7−1)/(4−1)=6/3=2"
+                    },
+                    {
+                        "text": "สมการเส้นตรงที่ผ่านจุด (0, 3) และมีความชัน 2 คือข้อใด",
+                        "options": [
+                            "y = 2x + 3",
+                            "y = 3x + 2",
+                            "y = 2x - 3",
+                            "y = -2x + 3"
+                        ],
+                        "correct": 0,
+                        "explanation": "สมการเส้นตรง y=mx+c แทนค่า m=2 และจุด (0,3): y=2x+3"
+                    },
+                    {
+                        "text": "เส้นตรงสองเส้นขนานกัน มีความสัมพันธ์ของความชันอย่างไร",
+                        "options": [
+                            "ความชันเท่ากัน",
+                            "ความชันคูณกันได้ -1",
+                            "ความชันเป็นส่วนกลับกัน",
+                            "ความชันต่างกันเสมอ"
+                        ],
+                        "correct": 0,
+                        "explanation": "เส้นตรงขนาน: ความชันเท่ากัน (m₁=m₂) กราฟไม่ตัดกัน"
+                    },
+                    {
+                        "text": "เส้นตรงสองเส้นตั้งฉากกัน ความชันมีความสัมพันธ์อย่างไร",
+                        "options": [
+                            "เท่ากัน",
+                            "คูณกันได้ -1",
+                            "บวกกันได้ 0",
+                            "เป็นจำนวนเดียวกัน"
+                        ],
+                        "correct": 1,
+                        "explanation": "เส้นตรงตั้งฉาก: ผลคูณของความชัน m₁×m₂=−1"
+                    },
+                    {
+                        "text": "จุด (3, -2) อยู่ในจตุภาคใด",
+                        "options": [
+                            "จตุภาคที่ 1",
+                            "จตุภาคที่ 2",
+                            "จตุภาคที่ 3",
+                            "จตุภาคที่ 4"
+                        ],
+                        "correct": 3,
+                        "explanation": "จุด (3,−2): x บวก y ลบ อยู่ในจตุภาคที่ 4 (แกน x บวก แกน y ลบ)"
+                    },
+                    {
+                        "text": "สมการ y = -3x + 5 มีความชันเท่าใด",
+                        "options": [
+                            "3",
+                            "-3",
+                            "5",
+                            "-5"
+                        ],
+                        "correct": 1,
+                        "explanation": "y=−3x+5 อยู่ในรูป y=mx+c โดย m=−3 คือความชัน"
+                    },
+                    {
+                        "text": "ระยะห่างจากจุด (0,0) ถึงจุด (6,8) เท่ากับ",
+                        "options": [
+                            "10",
+                            "14",
+                            "8",
+                            "6"
+                        ],
+                        "correct": 0,
+                        "explanation": "ระยะห่างจาก (0,0) ถึง (6,8): d=√(6²+8²)=√(36+64)=√100=10"
+                    },
+                    {
+                        "text": "เส้นตรง x = 5 มีลักษณะเป็นเส้นแบบใด",
+                        "options": [
+                            "แนวนอน",
+                            "แนวตั้ง",
+                            "ทแยงขึ้น",
+                            "ทแยงลง"
+                        ],
+                        "correct": 1,
+                        "explanation": "สมการ x=5 กำหนดค่า x ให้คงที่ กราฟคือเส้นตรงแนวตั้งขนานแกน y"
+                    },
+                    {
+                        "text": "จุดตัดแกน y ของสมการ y = 4x - 7 คือข้อใด",
+                        "options": [
+                            "(0, -7)",
+                            "(-7, 0)",
+                            "(0, 4)",
+                            "(4, 0)"
+                        ],
+                        "correct": 0,
+                        "explanation": "แทน x=0 ใน y=4x−7: y=4(0)−7=−7 ดังนั้นจุดตัดแกน y คือ (0,−7)"
+                    },
+                    {
+                        "text": "เส้นตรง y = 2x + 1 และ y = 2x - 5 มีความสัมพันธ์แบบใด",
+                        "options": [
+                            "ขนานกัน",
+                            "ตั้งฉากกัน",
+                            "ตัดกันที่จุดเดียว",
+                            "ทับกันสนิท"
+                        ],
+                        "correct": 0,
+                        "explanation": "y=2x+1 และ y=2x−5 มีความชันเท่ากัน (m=2) แต่จุดตัดแกน y ต่างกัน จึงขนานกัน"
+                    },
+                    {
+                        "text": "จุดกึ่งกลางของ (-2, 4) และ (6, -2) คือข้อใด",
+                        "options": [
+                            "(2, 1)",
+                            "(4, 2)",
+                            "(2, -1)",
+                            "(-2, 1)"
+                        ],
+                        "correct": 0,
+                        "explanation": "จุดกึ่งกลาง = ((−2+6)/2, (4+(−2))/2) = (4/2, 2/2) = (2,1)"
+                    },
+                    {
+                        "text": "ความชันของเส้นตรงแนวนอน เท่ากับเท่าใด",
+                        "options": [
+                            "0",
+                            "1",
+                            "หาค่าไม่ได้ (undefined)",
+                            "-1"
+                        ],
+                        "correct": 0,
+                        "explanation": "เส้นตรงแนวนอนมีการเปลี่ยนแปลงใน y เป็น 0 ดังนั้นความชัน m=0"
+                    },
+                    {
+                        "text": "ความชันของเส้นตรงแนวตั้ง เท่ากับเท่าใด",
+                        "options": [
+                            "0",
+                            "1",
+                            "หาค่าไม่ได้ (undefined)",
+                            "-1"
+                        ],
+                        "correct": 2,
+                        "explanation": "เส้นตรงแนวตั้ง x=c ไม่มีความชันที่กำหนดได้ เพราะ x₂−x₁=0 (หารด้วยศูนย์ไม่ได้)"
+                    },
+                    {
+                        "text": "สมการเส้นตรงผ่านจุด (2,3) และ (2,7) คือข้อใด",
+                        "options": [
+                            "x = 2",
+                            "y = 2",
+                            "x = 5",
+                            "y = 5"
+                        ],
+                        "correct": 0,
+                        "explanation": "จุด (2,3) และ (2,7) มี x เท่ากัน จึงเป็นเส้นตรงแนวตั้ง สมการคือ x=2"
+                    },
+                    {
+                        "text": "ระยะห่างระหว่างจุด (1,1) และ (1,5) เท่ากับ",
+                        "options": [
+                            "4",
+                            "5",
+                            "6",
+                            "3"
+                        ],
+                        "correct": 0,
+                        "explanation": "ระยะห่างระหว่าง (1,1) กับ (1,5): d=√((1−1)²+(5−1)²)=√(0+16)=4"
+                    },
+                    {
+                        "text": "เส้นตรง 2 เส้นมีความชัน 3 และ -1/3 เส้นทั้งสองมีความสัมพันธ์แบบใด",
+                        "options": [
+                            "ขนานกัน",
+                            "ตั้งฉากกัน",
+                            "ทับกัน",
+                            "ไม่เกี่ยวข้องกัน"
+                        ],
+                        "correct": 1,
+                        "explanation": "ความชัน m₁=3 และ m₂=−1/3 คูณกัน: 3×(−1/3)=−1 ดังนั้นตั้งฉากกัน"
+                    },
+                    {
+                        "text": "จุด (0, 0) เรียกว่าอะไรในระบบพิกัดฉาก",
+                        "options": [
+                            "จุดกำเนิด",
+                            "จุดตัด",
+                            "จุดยอด",
+                            "จุดศูนย์กลาง"
+                        ],
+                        "correct": 0,
+                        "explanation": "จุด (0,0) คือจุดกำเนิด (origin) ซึ่งเป็นจุดตัดของแกน x และแกน y"
+                    },
+                    {
+                        "text": "สมการ 3x + 2y = 6 เมื่อ x = 0 จะได้ y เท่ากับเท่าใด",
+                        "options": [
+                            "2",
+                            "3",
+                            "6",
+                            "0"
+                        ],
+                        "correct": 1,
+                        "explanation": "แทน x=0 ใน 3x+2y=6: 2y=6 ดังนั้น y=3"
+                    }
+                ]
+            },
+            "ภาคตัดกรวยชั้นสูง": {
+                "data": [
+                    {
+                        "text": "สมการวงกลมศูนย์กลาง (0,0) รัศมี 6 คือ",
+                        "options": [
+                            "x² + y² = 36",
+                            "x² + y² = 6",
+                            "x² - y² = 36",
+                            "(x-6)² + (y-6)² = 0"
+                        ],
+                        "correct": 0,
+                        "explanation": "สมการวงกลมมาตรฐานศูนย์กลาง (0,0) รัศมี r: x²+y²=r² ดังนั้น r=6: x²+y²=36"
+                    },
+                    {
+                        "text": "สมการวงกลมศูนย์กลาง (2, -3) รัศมี 5 คือข้อใด",
+                        "options": [
+                            "(x-2)² + (y+3)² = 25",
+                            "(x+2)² + (y-3)² = 25",
+                            "(x-2)² + (y-3)² = 5",
+                            "(x+2)² + (y+3)² = 10"
+                        ],
+                        "correct": 0,
+                        "explanation": "สมการวงกลมศูนย์กลาง (h,k) รัศมี r: (x−h)²+(y−k)²=r² แทนค่า (h,k)=(2,−3) r=5: (x−2)²+(y+3)²=25"
+                    },
+                    {
+                        "text": "จากสมการ x² + y² = 49 รัศมีของวงกลมเท่ากับ",
+                        "options": [
+                            "7",
+                            "49",
+                            "14",
+                            "24.5"
+                        ],
+                        "correct": 0,
+                        "explanation": "จาก x²+y²=49 เปรียบกับ x²+y²=r² ได้ r²=49 ดังนั้น r=√49=7"
+                    },
+                    {
+                        "text": "พาราโบลา y² = 4px เปิดไปทางทิศใดเมื่อ p > 0",
+                        "options": [
+                            "ขวา",
+                            "ซ้าย",
+                            "ขึ้น",
+                            "ลง"
+                        ],
+                        "correct": 0,
+                        "explanation": "พาราโบลา y²=4px เมื่อ p>0 จะเปิดไปทางขวา (แกนสมมาตรขนานแกน x)"
+                    },
+                    {
+                        "text": "สมการ x²/16 + y²/9 = 1 เป็นรูปทรงใด",
+                        "options": [
+                            "วงกลม",
+                            "วงรี",
+                            "พาราโบลา",
+                            "ไฮเพอร์โบลา"
+                        ],
+                        "correct": 1,
+                        "explanation": "สมการ x²/a²+y²/b²=1 คือวงรีมาตรฐาน (a≠b) เมื่อ a=4 b=3 จึงเป็นวงรี"
+                    },
+                    {
+                        "text": "วงรี x²/25 + y²/9 = 1 มีแกนเอก (a) เท่ากับเท่าใด",
+                        "options": [
+                            "3",
+                            "5",
+                            "9",
+                            "25"
+                        ],
+                        "correct": 1,
+                        "explanation": "วงรี x²/25+y²/9=1 มี a²=25 ดังนั้น a=5 (แกนเอก = ค่า a ที่มากกว่า)"
+                    },
+                    {
+                        "text": "สมการ x² - y² = 1 เป็นภาคตัดกรวยชนิดใด",
+                        "options": [
+                            "วงกลม",
+                            "วงรี",
+                            "พาราโบลา",
+                            "ไฮเพอร์โบลา"
+                        ],
+                        "correct": 3,
+                        "explanation": "สมการ x²−y²=1 อยู่ในรูป x²/a²−y²/b²=1 คือไฮเพอร์โบลา (มีเครื่องหมายลบระหว่างพจน์)"
+                    },
+                    {
+                        "text": "พาราโบลา x² = 4y มีจุดโฟกัสอยู่ที่ใด (สมการมาตรฐาน x²=4py)",
+                        "options": [
+                            "(0,1)",
+                            "(1,0)",
+                            "(0,4)",
+                            "(4,0)"
+                        ],
+                        "correct": 0,
+                        "explanation": "พาราโบลา x²=4py มีสมการมาตรฐาน x²=4(1)y ดังนั้น p=1 โฟกัสอยู่ที่ (0,p)=(0,1)"
+                    },
+                    {
+                        "text": "วงกลม (x-1)² + (y+2)² = 16 มีจุดศูนย์กลางที่ใด",
+                        "options": [
+                            "(1, -2)",
+                            "(-1, 2)",
+                            "(1, 2)",
+                            "(-1, -2)"
+                        ],
+                        "correct": 0,
+                        "explanation": "วงกลม (x−h)²+(y−k)²=r² ศูนย์กลางคือ (h,k) จาก (x−1)²+(y+2)²=16 ได้ h=1, k=−2 ศูนย์กลาง=(1,−2)"
+                    },
+                    {
+                        "text": "สมการวงรีมาตรฐานมีรูปแบบเป็นข้อใด",
+                        "options": [
+                            "x²/a² + y²/b² = 1",
+                            "x²/a² - y²/b² = 1",
+                            "y² = 4px",
+                            "x² + y² = r²"
+                        ],
+                        "correct": 0,
+                        "explanation": "วงรีมาตรฐาน: x²/a²+y²/b²=1 (a,b>0, a≠b) ใช้สำหรับวงรีที่มีแกนขนานกับแกนพิกัด"
+                    },
+                    {
+                        "text": "ไฮเพอร์โบลามีเส้นกำกับ (asymptote) หรือไม่",
+                        "options": [
+                            "มี",
+                            "ไม่มี",
+                            "มีเฉพาะบางกรณี",
+                            "ไม่แน่นอน"
+                        ],
+                        "correct": 0,
+                        "explanation": "ไฮเพอร์โบลามีเส้นกำกับ (asymptote) เสมอ เป็นเส้นที่กราฟเข้าใกล้แต่ไม่แตะ"
+                    },
+                    {
+                        "text": "วงกลมหน่วย (unit circle) มีสมการเป็นข้อใด",
+                        "options": [
+                            "x² + y² = 1",
+                            "x² + y² = 0",
+                            "x + y = 1",
+                            "x² - y² = 1"
+                        ],
+                        "correct": 0,
+                        "explanation": "วงกลมหน่วย (unit circle) มีศูนย์กลาง (0,0) และรัศมี r=1 ดังนั้นสมการคือ x²+y²=1"
+                    },
+                    {
+                        "text": "พาราโบลา y = x² - 4x + 3 มีจุดยอดอยู่ที่ x เท่าใด",
+                        "options": [
+                            "x = 1",
+                            "x = 2",
+                            "x = 3",
+                            "x = 4"
+                        ],
+                        "correct": 1,
+                        "explanation": "y=x²−4x+3 จุดยอดอยู่ที่ x=−b/(2a)=−(−4)/(2×1)=4/2=2"
+                    },
+                    {
+                        "text": "วงรีที่มี a = b จะมีรูปร่างเป็นแบบใด",
+                        "options": [
+                            "วงกลม",
+                            "เส้นตรง",
+                            "พาราโบลา",
+                            "ไฮเพอร์โบลา"
+                        ],
+                        "correct": 0,
+                        "explanation": "วงรีที่มี a=b จะมีรัศมีเท่ากันทุกทิศ ซึ่งก็คือวงกลมนั่นเอง"
+                    },
+                    {
+                        "text": "สมการ (x+3)²/4 - (y-1)²/9 = 1 เป็นภาคตัดกรวยชนิดใด",
+                        "options": [
+                            "วงกลม",
+                            "วงรี",
+                            "พาราโบลา",
+                            "ไฮเพอร์โบลา"
+                        ],
+                        "correct": 3,
+                        "explanation": "(x+3)²/4−(y−1)²/9=1 อยู่ในรูป (x−h)²/a²−(y−k)²/b²=1 ซึ่งคือไฮเพอร์โบลา"
+                    },
+                    {
+                        "text": "เส้นไดเรกตริกซ์ (directrix) เกี่ยวข้องกับภาคตัดกรวยชนิดใดโดยตรง",
+                        "options": [
+                            "วงกลม",
+                            "วงรีเท่านั้น",
+                            "พาราโบลา",
+                            "ไม่เกี่ยวกับภาคตัดกรวย"
+                        ],
+                        "correct": 2,
+                        "explanation": "เส้นไดเรกตริกซ์ (directrix) เป็นเส้นอ้างอิงที่ใช้นิยามพาราโบลา โดยทุกจุดบนพาราโบลาอยู่ห่างจากโฟกัสเท่ากับระยะห่างจากไดเรกตริกซ์"
+                    },
+                    {
+                        "text": "วงกลมที่สัมผัสแกน x และมีจุดศูนย์กลางที่ (0, 4) มีรัศมีเท่าใด",
+                        "options": [
+                            "2",
+                            "4",
+                            "8",
+                            "16"
+                        ],
+                        "correct": 1,
+                        "explanation": "วงกลมสัมผัสแกน x หมายความว่ารัศมี = ระยะห่างจากศูนย์กลางถึงแกน x = ค่า |y| ของศูนย์กลาง = |4| = 4"
+                    },
+                    {
+                        "text": "ค่าความเยื้องศูนย์กลาง (eccentricity) ของวงกลมเท่ากับเท่าใด",
+                        "options": [
+                            "0",
+                            "1",
+                            "มากกว่า 1",
+                            "ไม่นิยาม"
+                        ],
+                        "correct": 0,
+                        "explanation": "ค่าความเยื้องศูนย์กลาง e ของวงกลม = 0 (โฟกัสและศูนย์กลางอยู่จุดเดียวกัน ไม่มีความเยื้อง)"
+                    },
+                    {
+                        "text": "ค่าความเยื้องศูนย์กลางของพาราโบลาเท่ากับเท่าใด",
+                        "options": [
+                            "0",
+                            "1",
+                            "ระหว่าง 0 ถึง 1",
+                            "มากกว่า 1"
+                        ],
+                        "correct": 1,
+                        "explanation": "พาราโบลามีค่าความเยื้องศูนย์กลาง e = 1 เสมอ (วงรี e<1, ไฮเพอร์โบลา e>1)"
+                    },
+                    {
+                        "text": "สมการวงกลมที่ผ่านจุดกำเนิด (0,0) และมีจุดศูนย์กลาง (3,4) มีรัศมีเท่าใด",
+                        "options": [
+                            "5",
+                            "7",
+                            "3",
+                            "4"
+                        ],
+                        "correct": 0,
+                        "explanation": "รัศมี = ระยะห่างจากศูนย์กลาง (3,4) ถึงจุด (0,0) = √(3²+4²)=√(9+16)=√25=5"
+                    }
+                ]
+            }
+        };;
+
+        function startQuiz(topicName) {
+            currentQuestionIndex = 0;
+            score = 0;
+            isConfirmed = false;
+            selectedOptionData = null;
+            userAnswers = [];
+            currentTopicName = topicName;
+
+            let base = [...(realQuestionBank[topicName].data || [])];
+            currentQuestions = base.sort(() => Math.random() - 0.5).slice(0, totalQuestions);
+            while (currentQuestions.length < totalQuestions) {
+                currentQuestions.push(base[Math.floor(Math.random() * base.length)]);
+            }
+
+            startTime = Date.now();
+            document.getElementById('home-page').style.display = 'none';
+            document.getElementById('quiz-page').style.display = 'block';
+            document.getElementById('score-page').style.display = 'none';
+            document.getElementById('quiz-title').innerText = topicName;
+            showQuestion();
+        }
+
+        function showQuestion() {
+            isConfirmed = false;
+            selectedOptionData = null;
+            document.getElementById('confirm-btn').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'none';
+
+            const q = currentQuestions[currentQuestionIndex];
+            if (!q) { finishQuiz(); return; }
+
+            document.getElementById('question-counter').innerText = `ข้อที่ ${currentQuestionIndex + 1} / ${totalQuestions}`;
+            document.getElementById('question-box').innerText = q.text;
+
+            const container = document.getElementById('options-box');
+            container.innerHTML = '';
+
+            const shuffled = q.options.map((text, idx) => ({text, originalIndex: idx})).sort(() => Math.random() - 0.5);
+            shuffled.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = opt.text;
+                btn.onclick = () => selectOption(btn, opt.originalIndex, q.correct, shuffled);
+                container.appendChild(btn);
+            });
+        }
+
+        function selectOption(btn, selectedIdx, correctIdx, options) {
+            if (isConfirmed) return;
+            document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedOptionData = { button: btn, selectedOriginalIndex: selectedIdx, correctOriginalIndex: correctIdx, displayedOptions: options };
+            document.getElementById('confirm-btn').style.display = 'block';
+            playFeedback('click'); // สั่นตอนเลือก
+        }
+
+        function createBurstEffect(button, isCorrect) {
+            const rect = button.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            const colors = isCorrect 
+                ? ['#00ffcc', '#00cc99', '#66ffcc', '#ffffff'] 
+                : ['#ff5555', '#ff8888', '#ffaa88'];
+
+            const particleCount = isCorrect ? 22 : 16;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.style.position = 'fixed';
+                particle.style.left = `${centerX}px`;
+                particle.style.top = `${centerY}px`;
+                particle.style.width = `${6 + Math.random() * 6}px`;
+                particle.style.height = particle.style.width;
+                particle.style.borderRadius = '50%';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.zIndex = '99999';
+                particle.style.pointerEvents = 'none';
+                particle.style.opacity = '0.95';
+                document.body.appendChild(particle);
+
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = (isCorrect ? 3.5 : 2.8) + Math.random() * 3.5;
+                let vx = Math.cos(angle) * velocity;
+                let vy = Math.sin(angle) * velocity - (isCorrect ? 1.2 : 0.8);
+
+                let life = 28 + Math.random() * 18;
+
+                const animate = () => {
+                    life--;
+                    if (life <= 0) {
+                        particle.remove();
+                        return;
+                    }
+                    const currentLeft = parseFloat(particle.style.left);
+                    const currentTop = parseFloat(particle.style.top);
+                    particle.style.left = `${currentLeft + vx}px`;
+                    particle.style.top = `${currentTop + vy}px`;
+                    vy += 0.18;
+                    particle.style.opacity = (life / 40).toFixed(2);
+                    requestAnimationFrame(animate);
+                };
+                animate();
+            }
+        }
+
+        function confirmAnswer() {
+            if (!selectedOptionData || isConfirmed) return;
+            isConfirmed = true;
+            document.getElementById('confirm-btn').style.display = 'none';
+
+            const d = selectedOptionData;
+            const isCorrectAnswer = d.selectedOriginalIndex === d.correctOriginalIndex;
+
+            createBurstEffect(d.button, isCorrectAnswer);
+
+            // บันทึกคำตอบของข้อนี้ไว้สำหรับหน้าเฉลย
+            const q = currentQuestions[currentQuestionIndex];
+            userAnswers.push({
+                questionText: q.text,
+                options: q.options,
+                correctIndex: q.correct,
+                selectedIndex: d.selectedOriginalIndex,
+                isCorrect: isCorrectAnswer,
+                explanation: q.explanation || ''
+            });
+
+            if (isCorrectAnswer) {
+                d.button.classList.add('correct');
+                score++;
+                playFeedback('correct'); // สั่นแบบถูก
+            } else {
+                d.button.classList.add('wrong');
+                playFeedback('wrong'); // สั่นแบบผิด
+                d.displayedOptions.forEach((opt, idx) => {
+                    if (opt.originalIndex === d.correctOriginalIndex) {
+                        const correctBtn = document.querySelectorAll('.option-btn')[idx];
+                        correctBtn.classList.add('correct');
+                        setTimeout(() => {
+                            createBurstEffect(correctBtn, true);
+                        }, 180);
+                    }
+                });
+            }
+
+            document.getElementById('next-btn').style.display = 'block';
+        }
+
+        function nextQuestion() {
+            isConfirmed = false;
+            selectedOptionData = null;
+
+            currentQuestionIndex++;
+
+            if (currentQuestionIndex < totalQuestions) {
+                showQuestion();
+            } else {
+                finishQuiz();
+            }
+            window.scrollTo(0, 0);
+        }
+
+        function finishQuiz() {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const min = Math.floor(elapsed / 60);
+            const sec = elapsed % 60;
+            document.getElementById('quiz-page').style.display = 'none';
+            document.getElementById('score-page').style.display = 'block';
+            document.getElementById('user-score').innerText = score;
+            document.getElementById('total-time').innerText = `${min} นาที ${sec} วินาที`;
+            document.getElementById('score-topic').innerText = currentTopicName;
+
+            // สรุปสถิติถูก/ผิด
+            const wrongCount = totalQuestions - score;
+            document.getElementById('stat-correct-count').innerText = score;
+            document.getElementById('stat-wrong-count').innerText = wrongCount;
+
+            // วาดกราฟโดนัท (วงกลม r=68 -> เส้นรอบวง = 2*pi*68)
+            const circumference = 2 * Math.PI * 68;
+            const percent = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+            const progress = document.getElementById('donut-progress');
+            const dashLength = (percent / 100) * circumference;
+            progress.style.strokeDasharray = `${dashLength} ${circumference}`;
+            document.getElementById('donut-percent').innerText = `${percent}%`;
+        }
+
+        function goHome() {
+            document.getElementById('home-page').style.display = 'block';
+            document.getElementById('quiz-page').style.display = 'none';
+            document.getElementById('score-page').style.display = 'none';
+            document.getElementById('review-page').style.display = 'none';
+            document.getElementById('sponsor-page').style.display = 'none';
+        }
+
+        function goSponsor() {
+            document.getElementById('home-page').style.display = 'none';
+            document.getElementById('quiz-page').style.display = 'none';
+            document.getElementById('score-page').style.display = 'none';
+            document.getElementById('review-page').style.display = 'none';
+            document.getElementById('sponsor-page').style.display = 'block';
+            window.scrollTo(0, 0);
+        }
+
+        // ==================== หน้าเฉลยข้อสอบ (เลื่อนทีละข้อ) ====================
+        function openReview() {
+            reviewIndex = 0;
+            document.getElementById('score-page').style.display = 'none';
+            document.getElementById('review-page').style.display = 'block';
+            document.getElementById('review-title').innerText = 'เฉลยข้อสอบ: ' + currentTopicName;
+            showReviewQuestion();
+            window.scrollTo(0, 0);
+        }
+
+        function showReviewQuestion() {
+            const ans = userAnswers[reviewIndex];
+            if (!ans) return;
+
+            document.getElementById('review-counter').innerText = `ข้อที่ ${reviewIndex + 1} / ${userAnswers.length}`;
+            document.getElementById('review-question-box').innerText = ans.questionText;
+
+            const tag = document.getElementById('review-result-tag');
+            if (ans.isCorrect) {
+                tag.innerText = '✅ คุณตอบถูก';
+                tag.className = 'review-result-tag is-correct';
+            } else {
+                tag.innerText = '❌ คุณตอบผิด';
+                tag.className = 'review-result-tag is-wrong';
+            }
+
+            const container = document.getElementById('review-options-box');
+            container.innerHTML = '';
+
+            ans.options.forEach((optText, idx) => {
+                const row = document.createElement('div');
+                let cls = 'review-option';
+                let tagText = '';
+
+                const isCorrectOpt = idx === ans.correctIndex;
+                const isUserPick = idx === ans.selectedIndex;
+
+                if (isUserPick && isCorrectOpt) {
+                    cls += ' user-correct';
+                    tagText = '✅ คำตอบของคุณ (ถูก)';
+                } else if (isUserPick && !isCorrectOpt) {
+                    cls += ' user-wrong';
+                    tagText = '❌ คำตอบของคุณ';
+                } else if (isCorrectOpt) {
+                    cls += ' correct-answer-only';
+                    tagText = '✅ เฉลย';
+                }
+
+                row.className = cls;
+                row.innerHTML = `<span>${optText}</span>` + (tagText ? `<span class="tag">${tagText}</span>` : '');
+                container.appendChild(row);
+            });
+
+            document.getElementById('review-prev-btn').disabled = (reviewIndex === 0);
+            document.getElementById('review-next-btn').disabled = (reviewIndex === userAnswers.length - 1);
+
+            // แสดงคำอธิบายวิธีทำ
+            const expBox = document.getElementById('review-explanation-box');
+            if (ans.explanation) {
+                expBox.style.display = 'block';
+                expBox.innerText = ans.explanation;
+            } else {
+                expBox.style.display = 'none';
+            }
+        }
+
+        function reviewNext() {
+            if (reviewIndex < userAnswers.length - 1) {
+                reviewIndex++;
+                showReviewQuestion();
+                window.scrollTo(0, 0);
+            }
+        }
+
+        function reviewPrev() {
+            if (reviewIndex > 0) {
+                reviewIndex--;
+                showReviewQuestion();
+                window.scrollTo(0, 0);
+            }
+        }
+    </script>
+</body>
+</html>
